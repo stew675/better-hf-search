@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HuggingFace Base Models</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0d1117; color: #c9d1d9; padding: 24px; }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; color: #58a6ff; }
+  #status { font-size: 0.85rem; color: #8b949e; margin-bottom: 12px; min-height: 1.2em; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { background: #161b22; padding: 8px 10px; text-align: left; cursor: pointer;
+       user-select: none; border-bottom: 2px solid #30363d; position: sticky; top: 0; }
+  th:hover { background: #1c2129; }
+  th .arrow { margin-left: 4px; font-size: 0.7rem; }
+  td { padding: 6px 10px; border-bottom: 1px solid #21262d; }
+  a { color: #58a6ff; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .right { text-align: right; }
+  .task { text-align: left; white-space: nowrap; }
+  #count { font-size: 0.85rem; color: #8b949e; margin-top: 8px; }
+
+  .toggle { display: inline-block; width: 16px; text-align: center; color: #8b949e; margin-right: 4px; font-size: 0.7rem; transition: transform 0.15s; flex-shrink: 0; }
+  .toggle.open { transform: rotate(90deg); }
+
+  tr.l1-row td { cursor: pointer; font-weight: 600; }
+  tr.l1-row:hover td { background: #161b22; }
+
+  tr.detail-row td { padding: 0; background: #010409; }
+  .detail-inner { padding: 8px 12px 12px 16px; }
+  .detail-inner table { font-size: 0.8rem; }
+  .detail-inner th { font-size: 0.75rem; padding: 5px 8px; background: #161b22; }
+  .detail-inner td { padding: 4px 8px; font-size: 0.8rem; }
+  .detail-loading { color: #8b949e; font-style: italic; padding: 8px 0; }
+  .detail-error { color: #f85149; padding: 8px 0; }
+  .detail-count { font-size: 0.75rem; color: #8b949e; margin-top: 4px; }
+
+  tr.l2-row td { cursor: pointer; padding-left: 32px !important; }
+  tr.l2-row:hover td { background: #161b22; }
+  tr.l2-row td:first-child { padding-left: 32px !important; }
+
+  tr.l3-row td { cursor: pointer; padding-left: 48px !important; font-weight: 500; }
+  tr.l3-row:hover td { background: #1c2129; }
+  tr.l3-row td:first-child { padding-left: 48px !important; }
+
+  tr.l4-row td { padding-left: 64px !important; }
+  tr.l4-row td:first-child { padding-left: 64px !important; }
+
+  .badge { display: inline-block; font-size: 0.7rem; padding: 1px 6px; border-radius: 12px;
+           background: #1f6feb33; color: #58a6ff; border: 1px solid #1f6feb55; margin: 1px 2px; }
+  .badge.deriv { background: #23863633; color: #3fb950; border-color: #23863655; }
+  .likes-icon { color: #f85149; margin-right: 2px; }
+  .cell-flex { display: flex; align-items: center; }
+
+  /* Filter bar */
+  #filter-bar { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; align-items: center; }
+  #filter-bar label { display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem;
+                      padding: 3px 10px; border-radius: 14px; cursor: pointer; user-select: none;
+                      background: #161b22; border: 1px solid #30363d; transition: background 0.15s; }
+  #filter-bar label:hover { background: #1c2129; }
+  #filter-bar label input { accent-color: #58a6ff; }
+  #filter-bar .filter-label { color: #8b949e; font-size: 0.78rem; margin-right: 4px; }
+  #filter-bar .filter-actions { margin-left: auto; display: flex; gap: 6px; }
+  #filter-bar button { font-size: 0.72rem; padding: 3px 10px; border-radius: 12px; cursor: pointer;
+                       background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
+  #filter-bar button:hover { background: #30363d; }
+</style>
+</head>
+<body>
+<h1>HF Base Model Authors</h1>
+<div id="status">Fetching models…</div>
+<div id="filter-bar">
+  <span class="filter-label">Quant types:</span>
+</div>
+<table id="main-table">
+  <thead>
+    <tr>
+      <th data-key="author">Author <span class="arrow"></span></th>
+      <th data-key="count" class="right">Base Models <span class="arrow"></span></th>
+      <th data-key="totalDownloads" class="right">Total Downloads <span class="arrow"></span></th>
+      <th data-key="totalLikes" class="right">Total Likes <span class="arrow"></span></th>
+    </tr>
+  </thead>
+  <tbody id="body"></tbody>
+</table>
+<div id="count"></div>
+
+<script>
+const TASKS = ["text-generation", "image-text-to-text", "image-to-text"];
+const LIMIT = 500;
+const CUTOFF = new Date(Date.now() - 183 * 86400000);
+const Q_METHODS = ["awq", "gptq", "bitsandbytes", "eetq", "aqlm", "gguf", "exl2", "qqx", "marlin", "bnb", "fp4", "nf4", "int8", "int4", "q8", "q4"];
+const FILTER_DISPLAY = ["awq", "gptq", "gguf", "exl2", "marlin", "bitsandbytes", "aqlm", "eetq", "qqx"];
+const activeFilters = new Set(FILTER_DISPLAY);
+
+async function fetchJson(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function fetchModels(task) {
+  return fetchJson(`https://huggingface.co/api/models?sort=downloads&direction=-1&limit=${LIMIT}&pipeline_tag=${task}&full=true&cardData=true`);
+}
+
+function isBase(model) {
+  const cd = model.cardData;
+  if (!cd) return true;
+  return !cd.base_model;
+}
+
+function fmt(n) { return n.toLocaleString(); }
+function fmtDate(d) { return d ? new Date(d).toISOString().slice(0, 10) : "—"; }
+function fmtAge(d) {
+  if (!d) return "";
+  const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
+  if (days < 30) return `${days}d`;
+  if (days < 365) return `${Math.floor(days / 30)}mo`;
+  return `${(days / 365).toFixed(1)}y`;
+}
+function truncate(s, max) { return s.length > max ? s.slice(0, max) + "…" : s; }
+
+// ── State ──
+let sortKey = "totalDownloads";
+let sortAsc = false;
+const detailSort = {};
+const cache = {};
+
+function matchesFilter(qMethod) {
+  if (!qMethod) return true;
+  const methods = qMethod.toLowerCase().split(",").map(s => s.trim());
+  return methods.some(m => activeFilters.has(m));
+}
+
+function buildFilterBar() {
+  const bar = document.getElementById("filter-bar");
+  FILTER_DISPLAY.forEach(method => {
+    const lbl = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = activeFilters.has(method);
+    cb.addEventListener("change", () => {
+      if (cb.checked) activeFilters.add(method);
+      else activeFilters.delete(method);
+      refreshAllExpanded();
+    });
+    lbl.appendChild(cb);
+    lbl.appendChild(document.createTextNode(method.toUpperCase()));
+    bar.appendChild(lbl);
+  });
+
+  const actions = document.createElement("span");
+  actions.className = "filter-actions";
+
+  const allBtn = document.createElement("button");
+  allBtn.textContent = "All";
+  allBtn.addEventListener("click", () => {
+    FILTER_DISPLAY.forEach(m => activeFilters.add(m));
+    bar.querySelectorAll("input[type=checkbox]").forEach(cb => cb.checked = true);
+    refreshAllExpanded();
+  });
+  actions.appendChild(allBtn);
+
+  const noneBtn = document.createElement("button");
+  noneBtn.textContent = "None";
+  noneBtn.addEventListener("click", () => {
+    activeFilters.clear();
+    bar.querySelectorAll("input[type=checkbox]").forEach(cb => cb.checked = false);
+    refreshAllExpanded();
+  });
+  actions.appendChild(noneBtn);
+
+  bar.appendChild(actions);
+}
+
+function sortRows(rows, key, asc) {
+  return rows.slice().sort((a, b) => {
+    let va = a[key], vb = b[key];
+    if (["downloads", "likes", "totalDownloads", "totalLikes", "count"].includes(key)) { va = Number(va); vb = Number(vb); }
+    else if (["created_at", "updated_at"].includes(key)) { va = new Date(va || 0).getTime(); vb = new Date(vb || 0).getTime(); }
+    else { va = String(va || "").toLowerCase(); vb = String(vb || "").toLowerCase(); }
+    if (va < vb) return asc ? -1 : 1;
+    if (va > vb) return asc ? 1 : -1;
+    return 0;
+  });
+}
+
+// ── Level 1: Authors ──
+function renderMain(authorData) {
+  const tbody = document.getElementById("body");
+  const sorted = sortRows(authorData, sortKey, sortAsc);
+
+  let html = "";
+  sorted.forEach((a, idx) => {
+    html += `<tr class="l1-row" data-l1-idx="${idx}" data-author="${a.author}">
+      <td><span class="toggle" id="t1-${idx}">▶</span><a href="https://huggingface.co/${a.author}" target="_blank">${a.author}</a></td>
+      <td class="right">${a.count}</td>
+      <td class="right">${fmt(a.totalDownloads)}</td>
+      <td class="right">${fmt(a.totalLikes)}</td>
+    </tr>
+    <tr class="detail-row" id="d1-${idx}" style="display:none"><td colspan="4"><div class="detail-inner" id="i1-${idx}"></div></td></tr>`;
+  });
+
+  tbody.innerHTML = html;
+  document.getElementById("count").textContent =
+    `${sorted.length} authors with base models (created within 6 months). Click to expand.`;
+
+  tbody.querySelectorAll(".l1-row").forEach(tr => {
+    tr.addEventListener("click", handleL1Click);
+  });
+}
+
+function handleL1Click(e) {
+  if (e.target.tagName === "A") return;
+  const tr = e.currentTarget;
+  const idx = parseInt(tr.dataset.l1Idx);
+  const author = tr.dataset.author;
+  const detailRow = document.getElementById(`d1-${idx}`);
+  const inner = document.getElementById(`i1-${idx}`);
+  const tog = document.getElementById(`t1-${idx}`);
+
+  if (detailRow.style.display === "none") {
+    detailRow.style.display = "";
+    tog.classList.add("open");
+    if (!cache[author]) {
+      inner.innerHTML = '<div class="detail-loading">Fetching base models…</div>';
+      loadAuthorModels(idx, author, inner);
+    } else {
+      renderL2(idx, cache[author], inner);
+    }
+  } else {
+    detailRow.style.display = "none";
+    tog.classList.remove("open");
+  }
+}
+
+async function loadAuthorModels(idx, author, container) {
+  try {
+    const models = cache[author + "_models"] || await fetchJson(
+      `https://huggingface.co/api/models?author=${author}&sort=downloads&direction=-1&limit=1000&full=true&cardData=true`
+    );
+    if (!cache[author + "_models"]) cache[author + "_models"] = models;
+
+    const baseModels = models.filter(m => {
+      const created = m.createdAt;
+      if (!created || new Date(created) < CUTOFF) return false;
+      return isBase(m);
+    }).map(m => ({
+      id: m.id,
+      downloads: m.downloads || 0,
+      likes: m.likes || 0,
+      created_at: m.createdAt || "",
+      updated_at: m.lastModified || "",
+      tags: m.tags || []
+    }));
+
+    cache[author] = baseModels;
+
+    // Update Level 1 data and that row's cells
+    const ad = window._authorData;
+    for (const a of ad) {
+      if (a.author === author) {
+        a.count = baseModels.length;
+        a.totalDownloads = baseModels.reduce((s, m) => s + m.downloads, 0);
+        a.totalLikes = baseModels.reduce((s, m) => s + m.likes, 0);
+        break;
+      }
+    }
+    const row = document.querySelector(`.l1-row[data-author="${author}"]`);
+    if (row) {
+      const cells = row.querySelectorAll("td");
+      cells[1].textContent = baseModels.length;
+      cells[2].textContent = fmt(baseModels.reduce((s, m) => s + m.downloads, 0));
+      cells[3].textContent = fmt(baseModels.reduce((s, m) => s + m.likes, 0));
+    }
+
+    renderL2(idx, baseModels, container);
+  } catch (err) {
+    container.innerHTML = `<div class="detail-error">Error: ${err.message}</div>`;
+  }
+}
+
+// ── Level 2: Base Models ──
+function renderL2(idx, models, container) {
+  const state = detailSort[`l2-${idx}`] || { key: "downloads", asc: false };
+  const sorted = sortRows(models, state.key, state.asc);
+
+  const cols = [
+    { key: "id", label: "Model ID" },
+    { key: "downloads", label: "Downloads", cls: "right" },
+    { key: "likes", label: "Likes", cls: "right" },
+    { key: "created_at", label: "Created", cls: "right" }
+  ];
+
+  let html = `<table><thead><tr>`;
+  cols.forEach(c => {
+    html += `<th data-key="${c.key}" class="${c.cls || ''}">${c.label} <span class="arrow">${state.key === c.key ? (state.asc ? "▲" : "▼") : ""}</span></th>`;
+  });
+  html += `</tr></thead><tbody>`;
+
+  sorted.forEach((m, mIdx) => {
+    html += `<tr class="l2-row" data-l2-idx="${idx}" data-model-idx="${mIdx}" data-model="${m.id}">
+      <td><span class="toggle" id="t2-${idx}-${mIdx}">▶</span><a href="https://huggingface.co/${m.id}" target="_blank">${truncate(m.id.split("/").slice(1).join("/"), 40)}</a></td>
+      <td class="right">${fmt(m.downloads)}</td>
+      <td class="right"><span class="likes-icon">♥</span>${fmt(m.likes)}</td>
+      <td class="right">${fmtDate(m.created_at)} <span style="color:#484f58;font-size:0.75rem">(${fmtAge(m.created_at)})</span></td>
+    </tr>
+    <tr class="detail-row" id="d2-${idx}-${mIdx}" style="display:none"><td colspan="4"><div class="detail-inner" id="i2-${idx}-${mIdx}"></div></td></tr>`;
+  });
+
+  html += `</tbody></table><div class="detail-count">${models.length} base model(s)</div>`;
+  container.innerHTML = html;
+
+  container.querySelectorAll("thead th").forEach(th => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.key;
+      if (state.key === key) state.asc = !state.asc;
+      else { state.key = key; state.asc = false; }
+      detailSort[`l2-${idx}`] = state;
+      renderL2(idx, models, container);
+    });
+  });
+
+  container.querySelectorAll(".l2-row").forEach(tr => {
+    tr.addEventListener("click", handleL2Click);
+  });
+}
+
+function handleL2Click(e) {
+  if (e.target.tagName === "A") return;
+  const tr = e.currentTarget;
+  const l2Idx = parseInt(tr.dataset.l2Idx);
+  const modelIdx = parseInt(tr.dataset.modelIdx);
+  const modelId = tr.dataset.model;
+  const detailRow = document.getElementById(`d2-${l2Idx}-${modelIdx}`);
+  const inner = document.getElementById(`i2-${l2Idx}-${modelIdx}`);
+  const tog = document.getElementById(`t2-${l2Idx}-${modelIdx}`);
+
+  if (detailRow.style.display === "none") {
+    detailRow.style.display = "";
+    tog.classList.add("open");
+    const key = `children-${modelId}`;
+    if (cache[key]) {
+      renderL3(l2Idx, modelIdx, modelId, cache[key], inner);
+    } else {
+      inner.innerHTML = '<div class="detail-loading">Fetching children/quantizations…</div>';
+      loadChildren(l2Idx, modelIdx, modelId, inner);
+    }
+  } else {
+    detailRow.style.display = "none";
+    tog.classList.remove("open");
+  }
+}
+
+async function loadChildren(l2Idx, modelIdx, parentId, container) {
+  try {
+    const [parentAuthor, modelName] = parentId.split("/");
+    const results = [];
+    const seen = new Set();
+
+    const searches = [
+      `https://huggingface.co/api/models?search=${encodeURIComponent(parentId)}&sort=downloads&direction=-1&limit=1000&full=true&cardData=true`,
+      `https://huggingface.co/api/models?search=${encodeURIComponent(modelName)}&sort=downloads&direction=-1&limit=1000&full=true&cardData=true`
+    ];
+
+    for (const url of searches) {
+      const models = await fetchJson(url);
+      for (const m of models) {
+        if (m.id === parentId || seen.has(m.id)) continue;
+        seen.add(m.id);
+
+        const cd = m.cardData || {};
+        const baseModel = cd.base_model;
+        const idLower = m.id.toLowerCase();
+        const tagsStr = (m.tags || []).join(" ").toLowerCase();
+        const isQuant = Q_METHODS.some(t => idLower.includes(t) || tagsStr.includes(t));
+        const hasBaseModel = baseModel === parentId ||
+                             Array.isArray(baseModel) && baseModel.some(b => b === parentId);
+        const nameMatches = idLower.includes(modelName.toLowerCase());
+
+        if (hasBaseModel || (nameMatches && isQuant)) {
+          const qMethod = Q_METHODS.filter(t => idLower.includes(t) || tagsStr.includes(t));
+          results.push({
+            id: m.id,
+            author: m.id.split("/")[0],
+            downloads: m.downloads || 0,
+            likes: m.likes || 0,
+            created_at: m.createdAt || "",
+            updated_at: m.lastModified || "",
+            q_method: qMethod.length ? qMethod.join(", ") : "derivative",
+            tags: m.tags || []
+          });
+        }
+      }
+    }
+
+    cache[`children-${parentId}`] = results;
+    renderL3(l2Idx, modelIdx, parentId, results, container);
+  } catch (err) {
+    container.innerHTML = `<div class="detail-error">Error: ${err.message}</div>`;
+  }
+}
+
+// ── Level 3: Quant Author Groups ──
+function renderL3(l2Idx, modelIdx, parentId, children, container) {
+  const filtered = children.filter(c => matchesFilter(c.q_method));
+  const groups = {};
+  filtered.forEach(c => {
+    if (!groups[c.author]) groups[c.author] = [];
+    groups[c.author].push(c);
+  });
+
+  const groupEntries = Object.entries(groups).map(([author, quants]) => ({
+    author,
+    count: quants.length,
+    totalDownloads: quants.reduce((s, q) => s + q.downloads, 0),
+    quants
+  }));
+
+  groupEntries.sort((a, b) => b.totalDownloads - a.totalDownloads);
+
+  let html = `<table><thead><tr><th>Quant Author</th><th class="right">Models</th><th class="right">Downloads</th><th class="right"></th></tr></thead><tbody>`;
+  groupEntries.forEach((g, gIdx) => {
+    html += `<tr class="l3-row" data-l3-l2="${l2Idx}" data-l3-model-idx="${modelIdx}" data-l3-parent="${parentId}" data-l3-idx="${gIdx}" data-l3-author="${g.author}">
+      <td><span class="toggle" id="t3-${l2Idx}-${modelIdx}-${gIdx}">▶</span><a href="https://huggingface.co/${g.author}" target="_blank">${g.author}</a></td>
+      <td class="right">${g.count}</td>
+      <td class="right">${fmt(g.totalDownloads)}</td>
+      <td class="right"></td>
+    </tr>
+    <tr class="detail-row" id="d3-${l2Idx}-${modelIdx}-${gIdx}" style="display:none"><td colspan="4"><div class="detail-inner" id="i3-${l2Idx}-${modelIdx}-${gIdx}"></div></td></tr>`;
+  });
+  html += `</tbody></table>`;
+  html += `<div class="detail-count">${filtered.length} child model(s) from ${groupEntries.length} author(s)${filtered.length !== children.length ? ` (filtered from ${children.length})` : ''}</div>`;
+  container.innerHTML = html;
+
+  container.querySelectorAll(".l3-row").forEach(tr => {
+    tr.addEventListener("click", handleL3Click);
+  });
+}
+
+function handleL3Click(e) {
+  if (e.target.tagName === "A") return;
+  const tr = e.currentTarget;
+  const l2Idx = parseInt(tr.dataset.l3L2);
+  const modelIdx = parseInt(tr.dataset.l3ModelIdx);
+  const parentId = tr.dataset.l3Parent;
+  const gIdx = parseInt(tr.dataset.l3Idx);
+  const author = tr.dataset.l3Author;
+  const detailRow = document.getElementById(`d3-${l2Idx}-${modelIdx}-${gIdx}`);
+  const inner = document.getElementById(`i3-${l2Idx}-${modelIdx}-${gIdx}`);
+  const tog = document.getElementById(`t3-${l2Idx}-${modelIdx}-${gIdx}`);
+
+  if (detailRow.style.display === "none") {
+    detailRow.style.display = "";
+    tog.classList.add("open");
+    const allChildren = cache[`children-${parentId}`] || [];
+    const quants = allChildren.filter(c => c.author === author && matchesFilter(c.q_method));
+    renderL4(l2Idx, modelIdx, gIdx, quants, inner);
+  } else {
+    detailRow.style.display = "none";
+    tog.classList.remove("open");
+  }
+}
+
+// ── Level 4: Individual Quantizations ──
+function renderL4(l2Idx, modelIdx, gIdx, quants, container) {
+  const state = detailSort[`l4-${l2Idx}-${modelIdx}-${gIdx}`] || { key: "downloads", asc: false };
+  const sorted = sortRows(quants, state.key, state.asc);
+
+  const cols = [
+    { key: "id", label: "Model ID" },
+    { key: "q_method", label: "Quant" },
+    { key: "downloads", label: "Downloads", cls: "right" },
+    { key: "likes", label: "Likes", cls: "right" },
+    { key: "created_at", label: "Created", cls: "right" },
+    { key: "updated_at", label: "Updated", cls: "right" }
+  ];
+
+  let html = `<table><thead><tr>`;
+  cols.forEach(c => {
+    html += `<th data-key="${c.key}" class="${c.cls || ''}">${c.label} <span class="arrow">${state.key === c.key ? (state.asc ? "▲" : "▼") : ""}</span></th>`;
+  });
+  html += `</tr></thead><tbody>`;
+
+  sorted.forEach(q => {
+    html += `<tr class="l4-row">
+      <td><a href="https://huggingface.co/${q.id}" target="_blank">${truncate(q.id, 38)}</a></td>
+      <td><span class="badge ${q.q_method === 'derivative' ? 'deriv' : ''}">${q.q_method}</span></td>
+      <td class="right">${fmt(q.downloads)}</td>
+      <td class="right"><span class="likes-icon">♥</span>${fmt(q.likes)}</td>
+      <td class="right">${fmtDate(q.created_at)}</td>
+      <td class="right">${fmtDate(q.updated_at)}</td>
+    </tr>`;
+  });
+
+  html += `</tbody></table>`;
+  container.innerHTML = html;
+
+  container.querySelectorAll("th").forEach(th => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.key;
+      if (state.key === key) state.asc = !state.asc;
+      else { state.key = key; state.asc = false; }
+      detailSort[`l4-${l2Idx}-${modelIdx}-${gIdx}`] = state;
+      renderL4(l2Idx, modelIdx, gIdx, quants, container);
+    });
+  });
+}
+
+// ── Refresh all expanded sections when filter changes ──
+function refreshAllExpanded() {
+  document.querySelectorAll(".l1-row").forEach(tr => {
+    const idx = parseInt(tr.dataset.l1Idx);
+    const detailRow = document.getElementById(`d1-${idx}`);
+    if (detailRow && detailRow.style.display !== "none") {
+      const author = tr.dataset.author;
+      const models = cache[author];
+      if (models) {
+        const inner = document.getElementById(`i1-${idx}`);
+        renderL2(idx, models, inner);
+      }
+    }
+  });
+
+  document.querySelectorAll(".l2-row").forEach(tr => {
+    const l2Idx = parseInt(tr.dataset.l2Idx);
+    const modelIdx = parseInt(tr.dataset.modelIdx);
+    const detailRow = document.getElementById(`d2-${l2Idx}-${modelIdx}`);
+    if (detailRow && detailRow.style.display !== "none") {
+      const modelId = tr.dataset.model;
+      const children = cache[`children-${modelId}`];
+      if (children) {
+        const inner = document.getElementById(`i2-${l2Idx}-${modelIdx}`);
+        renderL3(l2Idx, modelIdx, modelId, children, inner);
+      }
+    }
+  });
+
+  document.querySelectorAll(".l3-row").forEach(tr => {
+    const l2Idx = parseInt(tr.dataset.l3L2);
+    const modelIdx = parseInt(tr.dataset.l3ModelIdx);
+    const gIdx = parseInt(tr.dataset.l3Idx);
+    const detailRow = document.getElementById(`d3-${l2Idx}-${modelIdx}-${gIdx}`);
+    if (detailRow && detailRow.style.display !== "none") {
+      const parentId = tr.dataset.l3Parent;
+      const author = tr.dataset.l3Author;
+      const allChildren = cache[`children-${parentId}`] || [];
+      const quants = allChildren.filter(c => c.author === author && matchesFilter(c.q_method));
+      const inner = document.getElementById(`i3-${l2Idx}-${modelIdx}-${gIdx}`);
+      renderL4(l2Idx, modelIdx, gIdx, quants, inner);
+    }
+  });
+}
+
+// ── Main Table Sort ──
+function updateArrows() {
+  document.querySelectorAll("#main-table thead th").forEach(th => {
+    const arrow = th.querySelector(".arrow");
+    arrow.textContent = th.dataset.key === sortKey ? (sortAsc ? "▲" : "▼") : "";
+  });
+}
+
+document.querySelector("#main-table thead").addEventListener("click", e => {
+  const th = e.target.closest("th");
+  if (!th) return;
+  const key = th.dataset.key;
+  if (sortKey === key) sortAsc = !sortAsc;
+  else { sortKey = key; sortAsc = false; }
+  updateArrows();
+  renderMain(window._authorData);
+});
+
+// ── Init ──
+(async () => {
+  const status = document.getElementById("status");
+  const seen = new Set();
+  const allModels = [];
+
+  for (let i = 0; i < TASKS.length; i++) {
+    status.textContent = `Fetching ${TASKS[i]}… (${i + 1}/${TASKS.length})`;
+    try {
+      const models = await fetchModels(TASKS[i]);
+      for (const m of models) {
+        if (seen.has(m.id)) continue;
+        const created = m.createdAt;
+        if (!created || new Date(created) < CUTOFF) continue;
+        if (!isBase(m)) continue;
+        seen.add(m.id);
+        allModels.push(m);
+      }
+    } catch (e) {
+      status.textContent = `Error fetching ${TASKS[i]}: ${e.message}`;
+    }
+  }
+
+  // Group by author
+  const authorMap = {};
+  allModels.forEach(m => {
+    const author = m.id.split("/")[0];
+    if (!authorMap[author]) authorMap[author] = { author, count: 0, totalDownloads: 0, totalLikes: 0 };
+    authorMap[author].count++;
+    authorMap[author].totalDownloads += m.downloads || 0;
+    authorMap[author].totalLikes += m.likes || 0;
+  });
+
+  const authorData = Object.values(authorMap);
+  window._authorData = authorData;
+  sortKey = "totalDownloads";
+  sortAsc = false;
+  updateArrows();
+  buildFilterBar();
+  renderMain(authorData);
+  status.textContent = "Done.";
+})();
+</script>
+</body>
+</html>
