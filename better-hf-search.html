@@ -53,15 +53,15 @@
   .likes-icon { color: #f85149; margin-right: 2px; }
   .cell-flex { display: flex; align-items: center; }
 
-  /* Filter bar */
-  #filter-bar, #task-filter-bar { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; align-items: center; }
-  #filter-bar .filter-chip, #task-filter-bar .filter-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem;
-                       padding: 3px 10px; border-radius: 14px; cursor: pointer; user-select: none;
-                       background: #161b22; border: 1px solid #30363d; transition: background 0.15s, color 0.15s, border-color 0.15s; }
-  #filter-bar .filter-chip:hover, #task-filter-bar .filter-chip:hover { background: #1c2129; }
-  #filter-bar .filter-chip.active, #task-filter-bar .filter-chip.active { color: #58a6ff; border-color: #58a6ff; }
-  #filter-bar .filter-chip.inactive, #task-filter-bar .filter-chip.inactive { color: #484f58; }
-  #filter-bar .filter-label, #task-filter-bar .filter-label { color: #8b949e; font-size: 0.78rem; margin-right: 4px; }
+ /* Filter bar */
+  #filter-bar, #from-bar, #to-bar { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; align-items: center; }
+  #filter-bar .filter-chip, #from-bar .filter-chip, #to-bar .filter-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem;
+                        padding: 3px 10px; border-radius: 14px; cursor: pointer; user-select: none;
+                        background: #161b22; border: 1px solid #30363d; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+  #filter-bar .filter-chip:hover, #from-bar .filter-chip:hover, #to-bar .filter-chip:hover { background: #1c2129; }
+  #filter-bar .filter-chip.active, #from-bar .filter-chip.active, #to-bar .filter-chip.active { color: #58a6ff; border-color: #58a6ff; }
+  #filter-bar .filter-chip.inactive, #from-bar .filter-chip.inactive, #to-bar .filter-chip.inactive { color: #484f58; }
+  #filter-bar .filter-label, #from-bar .filter-label, #to-bar .filter-label { color: #8b949e; font-size: 0.78rem; margin-right: 4px; }
   #get-results-btn { display: inline-flex; align-items: center; justify-content: center; padding: 6px 20px;
     font-size: 0.82rem; font-weight: 600; border-radius: 14px; cursor: pointer; user-select: none;
     background: #21262d; color: #484f58; border: 1px solid #30363d; transition: background 0.15s, color 0.15s, border-color 0.15s;
@@ -127,8 +127,11 @@
 <div id="filter-bar">
   <span class="filter-label">Quant types:</span>
 </div>
-<div id="task-filter-bar">
-  <span class="filter-label">Task types:</span>
+<div id="from-bar">
+  <span class="filter-label">From:</span>
+</div>
+<div id="to-bar">
+  <span class="filter-label">To:</span>
 </div>
 <div id="get-results-btn" style="display:flex;justify-content:center;margin:8px 0 12px;">Get Results</div>
 <table id="main-table">
@@ -145,17 +148,29 @@
 <div id="count"></div>
 
 <script>
-const TASK_CATEGORIES = {
-  text: ["text-generation", "text-classification", "token-classification", "question-answering", "zero-shot-classification", "translation", "summarization", "feature-extraction", "fill-mask", "sentence-similarity"],
-  audio: ["audio-classification", "audio-to-audio", "voice-activity-detection", "text-to-audio"],
-  speech: ["text-to-speech", "automatic-speech-recognition"],
-  image: ["image-classification", "object-detection", "image-segmentation", "text-to-image", "image-to-text", "image-to-image", "unconditional-image-generation", "zero-shot-image-classification", "mask-generation", "zero-shot-object-detection", "image-feature-extraction", "image-text-to-text", "image-text-to-image"],
-  video: ["video-classification", "image-to-video", "text-to-video", "image-text-to-video", "video-text-to-text", "any-to-any", "video-to-video"],
-  "3d": ["depth-estimation", "text-to-3d", "image-to-3d", "keypoint-detection"],
-  other: ["reinforcement-learning", "robotics", "tabular-classification", "tabular-regression", "time-series-forecasting", "graph-ml", "visual-question-answering", "document-question-answering", "visual-document-retrieval", "audio-text-to-text", "table-question-answering", "text-ranking", "text-retrieval", "multiple-choice", "table-to-text", "other"]
-};
-const TASK_DISPLAY = ["text", "audio", "speech", "image", "video", "3d", "other"];
-const activeTaskFilters = new Set(["text", "image"]);
+const TO_TAGS = [
+  { tag: "text-to-speech", from: ["text"], to: "speech" },
+  { tag: "text-to-audio", from: ["text"], to: "audio" },
+  { tag: "text-to-image", from: ["text"], to: "image" },
+  { tag: "text-to-video", from: ["text"], to: "video" },
+  { tag: "text-to-3d", from: ["text"], to: "3d" },
+  { tag: "image-to-text", from: ["image"], to: "text" },
+  { tag: "image-to-image", from: ["image"], to: "image" },
+  { tag: "image-to-video", from: ["image"], to: "video" },
+  { tag: "image-to-3d", from: ["image"], to: "3d" },
+  { tag: "audio-to-audio", from: ["audio"], to: "audio" },
+  { tag: "audio-text-to-text", from: ["audio", "text"], to: "text" },
+  { tag: "image-text-to-text", from: ["image", "text"], to: "text" },
+  { tag: "image-text-to-image", from: ["image", "text"], to: "image" },
+  { tag: "image-text-to-video", from: ["image", "text"], to: "video" },
+  { tag: "video-to-video", from: ["video"], to: "video" },
+  { tag: "video-text-to-text", from: ["video", "text"], to: "text" },
+  { tag: "any-to-any", from: ["any"], to: "any" }
+];
+const FROM_OPTIONS = ["text", "image", "audio", "video", "any"];
+const TO_OPTIONS = ["text", "speech", "audio", "image", "video", "3d", "any"];
+const activeFromFilters = new Set(["text", "image"]);
+const activeToFilters = new Set(["text"]);
 const LIMIT = 500;
 const fetchedTasks = new Set();
 let needsUpdate = false;
@@ -169,21 +184,19 @@ const Q_METHODS = ["awq", "gptq", "bitsandbytes", "eetq", "aqlm", "gguf", "exl2"
 const FILTER_DISPLAY = ["awq", "gguf", "mlx", "safetensors", "others"];
 const activeFilters = new Set(FILTER_DISPLAY);
 function resolveTasks() {
-  const tasks = [];
-  TASK_DISPLAY.forEach(cat => {
-    if (activeTaskFilters.has(cat)) tasks.push(...TASK_CATEGORIES[cat]);
-  });
-  return tasks;
-}
-function taskToCategory(tag) {
-  for (const [cat, tags] of Object.entries(TASK_CATEGORIES)) {
-    if (tags.includes(tag)) return cat;
-  }
-  return "other";
+  return TO_TAGS.filter(t => {
+    const fromMatch = t.from.some(f => activeFromFilters.has(f));
+    const toMatch = activeToFilters.has(t.to);
+    return fromMatch && toMatch;
+  }).map(t => t.tag);
 }
 function matchesTaskFilter(pipelineTag) {
   if (!pipelineTag) return true;
-  return activeTaskFilters.has(taskToCategory(pipelineTag));
+  const t = TO_TAGS.find(x => x.tag === pipelineTag);
+  if (!t) return false;
+  const fromMatch = t.from.some(f => activeFromFilters.has(f));
+  const toMatch = activeToFilters.has(t.to);
+  return fromMatch && toMatch;
 }
 
 async function fetchJson(url) {
@@ -296,10 +309,15 @@ function syncFilterChips() {
     chip.classList.toggle("active", activeFilters.has(m));
     chip.classList.toggle("inactive", !activeFilters.has(m));
   });
-  document.querySelectorAll("#task-filter-bar .filter-chip").forEach(chip => {
-    const t = chip.dataset.task;
-    chip.classList.toggle("active", activeTaskFilters.has(t));
-    chip.classList.toggle("inactive", !activeTaskFilters.has(t));
+  document.querySelectorAll("#from-bar .filter-chip").forEach(chip => {
+    const f = chip.dataset.option;
+    chip.classList.toggle("active", activeFromFilters.has(f));
+    chip.classList.toggle("inactive", !activeFromFilters.has(f));
+  });
+  document.querySelectorAll("#to-bar .filter-chip").forEach(chip => {
+    const t = chip.dataset.option;
+    chip.classList.toggle("active", activeToFilters.has(t));
+    chip.classList.toggle("inactive", !activeToFilters.has(t));
   });
 }
 function applyFilterLogic(method) {
@@ -329,31 +347,47 @@ function buildFilterBar() {
     bar.appendChild(chip);
   });
 }
-function buildTaskFilterBar() {
-  const bar = document.getElementById("task-filter-bar");
-  TASK_DISPLAY.forEach(task => {
+function buildFromToBars() {
+  buildBar("from-bar", FROM_OPTIONS, activeFromFilters, applyFromLogic);
+  buildBar("to-bar", TO_OPTIONS, activeToFilters, applyToLogic);
+}
+function buildBar(barId, options, activeSet, clickHandler) {
+  const bar = document.getElementById(barId);
+  options.forEach(opt => {
     const chip = document.createElement("span");
-    chip.className = "filter-chip " + (activeTaskFilters.has(task) ? "active" : "inactive");
-    chip.dataset.task = task;
-    chip.textContent = task.toUpperCase();
+    chip.className = "filter-chip " + (activeSet.has(opt) ? "active" : "inactive");
+    chip.dataset.option = opt;
+    chip.textContent = opt.charAt(0).toUpperCase() + opt.slice(1);
     chip.addEventListener("click", () => {
-      applyTaskLogic(task);
+      clickHandler(opt);
       syncFilterChips();
       markDirty();
     });
     bar.appendChild(chip);
   });
 }
-function applyTaskLogic(task) {
-  const wasEnabled = activeTaskFilters.has(task);
-  const enabledCount = TASK_DISPLAY.filter(t => activeTaskFilters.has(t)).length;
-  if (!wasEnabled) {
-    activeTaskFilters.add(task);
+function applyFromLogic(option) {
+  applyBarLogic(option, FROM_OPTIONS, activeFromFilters);
+}
+function applyToLogic(option) {
+  applyBarLogic(option, TO_OPTIONS, activeToFilters);
+}
+function applyBarLogic(option, options, activeSet) {
+  const wasEnabled = activeSet.has(option);
+  const enabledCount = options.filter(o => activeSet.has(o)).length;
+  if (option === "any") {
+    if (!wasEnabled) {
+      options.forEach(o => activeSet.add(o));
+    } else {
+      activeSet.delete("any");
+    }
+  } else if (!wasEnabled) {
+    activeSet.add(option);
   } else if (enabledCount === 1) {
-    TASK_DISPLAY.forEach(t => activeTaskFilters.add(t));
+    options.forEach(o => activeSet.add(o));
   } else {
-    TASK_DISPLAY.forEach(t => activeTaskFilters.delete(t));
-    activeTaskFilters.add(task);
+    options.forEach(o => activeSet.delete(o));
+    activeSet.add(option);
   }
 }
 
@@ -932,7 +966,7 @@ return allFetched;
   sortAsc = false;
   updateArrows();
   buildFilterBar();
-  buildTaskFilterBar();
+  buildFromToBars();
   buildDateSlider();
   buildParamSlider();
   markDirty();
