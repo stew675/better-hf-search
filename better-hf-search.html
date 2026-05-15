@@ -7,7 +7,7 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0d1117; color: #c9d1d9; padding: 24px; }
-  h1 { font-size: 1.4rem; margin-bottom: 4px; color: #58a6ff; }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; color: #58a6ff; text-align: center; }
   #status { font-size: 0.85rem; color: #8b949e; margin-bottom: 12px; min-height: 1.2em; }
   table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
   th { background: #161b22; padding: 8px 10px; text-align: left; cursor: pointer;
@@ -93,7 +93,7 @@
 </style>
 </head>
 <body>
-<h1>HF Base Model Authors</h1>
+<h1>Better Hugging Face Model Search</h1>
 <div id="status">Fetching models…</div>
 <div id="date-slider">
   <div class="ds-title">Date Range</div>
@@ -839,7 +839,7 @@ document.querySelector("#main-table").addEventListener("click", e => {
   buildParamSlider();
   window._authorData = computeAuthorData();
   renderMain(window._authorData);
-  status.textContent = "Done.";
+  status.textContent = "";
 })();
 </script>
 </body>
