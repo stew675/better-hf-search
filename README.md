@@ -1,16 +1,16 @@
-# Better HF Search
+# Streamlined Hugging Face Model Search
 
 A browser-based, 4-level hierarchical explorer for HuggingFace base models and their quantizations — no server, no install, just open the HTML file.
 
 ## Quick Start
 
-Open `better-hf-search.html` in any modern browser. That's it.
+Open `streamlined-hf-model-search.html` in any modern browser. That's it.
 
 ## How It Works
 
 | Level | What You See | Sortable By |
 |-------|-------------|-------------|
-| **1 — Authors** | Organizations with base models matching selected range | Author, Base Models, Total Downloads, Total Likes |
+| **1 — Model Authors** | Organizations with base models matching selected range | Author, Base Models, Total Downloads, Total Likes |
 | **2 — Base Models** | Individual base models by that author | Model ID, Params, Created, Downloads, Likes |
 | **3 — Quant Authors** | Who made quantizations, grouped by author | Models, Downloads |
 | **4 — Quantizations** | Individual quantized models with method badges | Model ID, Quant, Downloads, Likes, Created, Updated |
@@ -22,9 +22,7 @@ Two sliders above the table let you filter by **date** (months ago, up to 25 mon
 ## Quantization Filter
 
 Checkbox bar above the table lets you toggle quant types on/off:
-AWQ, GPTQ, GGUF, EXL2, Marlin, BitsAndBytes, AQLM, EETQ, MLX.
-
-Use **All** / **None** buttons for quick reset. Filters apply instantly to all expanded sections.
+AWQ, GUF, Safe Tensors, MLX, Others.
 
 ## Features
 
