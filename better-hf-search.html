@@ -146,6 +146,7 @@
 </div>
 <div id="filter-bar">
   <span class="filter-label">Quant types:</span>
+  <span id="api-counter" class="filter-label" style="margin-left:auto; font-variant-numeric: tabular-nums; min-width: 100px; text-align: right;">API Calls: 000</span>
 </div>
 <div id="get-results-btn" style="display:flex;justify-content:center;margin:8px 0 12px;">Get Results</div>
 <table id="main-table">
@@ -191,6 +192,8 @@ const LIMIT = 500;
 const fetchedTasks = new Set();
 let fetchedUntagged = false;
 let needsUpdate = false;
+let apiCalls = 0;
+function incApiCalls(n) { apiCalls += n; document.getElementById("api-counter").textContent = "API Calls: " + String(apiCalls).padStart(3, "0"); }
 function markDirty() { needsUpdate = true; document.getElementById("get-results-btn").classList.add("ready"); }
 let sliderFrom = -6;
 let sliderTo = 0;
@@ -219,6 +222,7 @@ function matchesTaskFilter(pipelineTag) {
 async function fetchJson(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  incApiCalls(1);
   return res.json();
 }
 
