@@ -924,13 +924,10 @@ async function fetchTasks(tasks) {
       status.textContent = `Error fetching ${tasks[i]}: ${e.message}`;
     }
   }
-  return allFetched;
+return allFetched;
 }
-(async () => {
+(() => {
   const status = document.getElementById("status");
-  const tasks = resolveTasks();
-  const allFetched = await fetchTasks(tasks);
-  window._allFetched = allFetched;
   sortKey = "totalDownloads";
   sortAsc = false;
   updateArrows();
@@ -938,9 +935,9 @@ async function fetchTasks(tasks) {
   buildTaskFilterBar();
   buildDateSlider();
   buildParamSlider();
-  window._authorData = computeAuthorData();
-  renderMain(window._authorData);
-  status.textContent = "";
+  markDirty();
+  status.textContent = "Select your filters, then click Get Results.";
+  renderMain([]);
 })();
 </script>
 </body>
