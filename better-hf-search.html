@@ -58,13 +58,13 @@
   #filter-bar label { display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem;
                       padding: 3px 10px; border-radius: 14px; cursor: pointer; user-select: none;
                       background: #161b22; border: 1px solid #30363d; transition: background 0.15s; }
-  #filter-bar label:hover { background: #1c2129; }
-  #filter-bar label input { accent-color: #58a6ff; }
+  #filter-bar .filter-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem;
+                       padding: 3px 10px; border-radius: 14px; cursor: pointer; user-select: none;
+                       background: #161b22; border: 1px solid #30363d; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+  #filter-bar .filter-chip:hover { background: #1c2129; }
+  #filter-bar .filter-chip.active { color: #58a6ff; border-color: #58a6ff; }
+  #filter-bar .filter-chip.inactive { color: #484f58; }
   #filter-bar .filter-label { color: #8b949e; font-size: 0.78rem; margin-right: 4px; }
-  #filter-bar .filter-actions { margin-left: auto; display: flex; gap: 6px; }
-  #filter-bar button { font-size: 0.72rem; padding: 3px 10px; border-radius: 12px; cursor: pointer;
-                       background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
-  #filter-bar button:hover { background: #30363d; }
 
   /* Range sliders */
   #date-slider, #param-slider { margin: 8px 0 6px; padding: 8px 14px 10px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; }
@@ -146,7 +146,7 @@ const PARAM_VALUES = [0,1,2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100,200,300
 let paramSliderFrom = 0;
 let paramSliderTo = 29;
 const Q_METHODS = ["awq", "gptq", "bitsandbytes", "eetq", "aqlm", "gguf", "exl2", "marlin", "mlx", "bnb", "fp4", "nf4", "int8", "int4", "q8", "q4"];
-const FILTER_DISPLAY = ["awq", "gptq", "gguf", "exl2", "marlin", "bitsandbytes", "aqlm", "eetq", "mlx"];
+const FILTER_DISPLAY = ["awq", "gguf", "mlx", "safetensors", "others"];
 const activeFilters = new Set(FILTER_DISPLAY);
 
 async function fetchJson(url) {
@@ -241,48 +241,50 @@ const cache = {};
 function matchesFilter(qMethod) {
   if (!qMethod) return true;
   const methods = qMethod.toLowerCase().split(",").map(s => s.trim());
-  return methods.some(m => activeFilters.has(m));
+  return methods.some(m => {
+    const cat = qMethodToCategory(m);
+    return activeFilters.has(cat);
+  });
+}
+function qMethodToCategory(method) {
+  const m = method.toLowerCase();
+  if (["awq", "gguf", "mlx", "safetensors"].includes(m)) return m;
+  return "others";
 }
 
+function syncFilterChips() {
+  document.querySelectorAll("#filter-bar .filter-chip").forEach(chip => {
+    const m = chip.dataset.method;
+    chip.classList.toggle("active", activeFilters.has(m));
+    chip.classList.toggle("inactive", !activeFilters.has(m));
+  });
+}
+function applyFilterLogic(method) {
+  const wasEnabled = activeFilters.has(method);
+  const enabledCount = FILTER_DISPLAY.filter(m => activeFilters.has(m)).length;
+  if (!wasEnabled) {
+    activeFilters.add(method);
+  } else if (enabledCount === 1) {
+    FILTER_DISPLAY.forEach(m => activeFilters.add(m));
+  } else {
+    FILTER_DISPLAY.forEach(m => activeFilters.delete(m));
+    activeFilters.add(method);
+  }
+}
 function buildFilterBar() {
   const bar = document.getElementById("filter-bar");
   FILTER_DISPLAY.forEach(method => {
-    const lbl = document.createElement("label");
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.checked = activeFilters.has(method);
-    cb.addEventListener("change", () => {
-      if (cb.checked) activeFilters.add(method);
-      else activeFilters.delete(method);
+    const chip = document.createElement("span");
+    chip.className = "filter-chip active";
+    chip.dataset.method = method;
+    chip.textContent = method.toUpperCase();
+    chip.addEventListener("click", () => {
+      applyFilterLogic(method);
+      syncFilterChips();
       refreshAllExpanded();
     });
-    lbl.appendChild(cb);
-    lbl.appendChild(document.createTextNode(method.toUpperCase()));
-    bar.appendChild(lbl);
+    bar.appendChild(chip);
   });
-
-  const actions = document.createElement("span");
-  actions.className = "filter-actions";
-
-  const allBtn = document.createElement("button");
-  allBtn.textContent = "All";
-  allBtn.addEventListener("click", () => {
-    FILTER_DISPLAY.forEach(m => activeFilters.add(m));
-    bar.querySelectorAll("input[type=checkbox]").forEach(cb => cb.checked = true);
-    refreshAllExpanded();
-  });
-  actions.appendChild(allBtn);
-
-  const noneBtn = document.createElement("button");
-  noneBtn.textContent = "None";
-  noneBtn.addEventListener("click", () => {
-    activeFilters.clear();
-    bar.querySelectorAll("input[type=checkbox]").forEach(cb => cb.checked = false);
-    refreshAllExpanded();
-  });
-  actions.appendChild(noneBtn);
-
-  bar.appendChild(actions);
 }
 
 function sortRows(rows, key, asc) {
@@ -512,7 +514,8 @@ async function loadChildren(l2Idx, modelIdx, parentId, container) {
         const nameMatches = idLower.includes(modelName.toLowerCase());
 
         if (hasBaseModel || (nameMatches && isQuant)) {
-          const qMethod = Q_METHODS.filter(t => idLower.includes(t) || tagsStr.includes(t));
+          const qMethods = Q_METHODS.filter(t => idLower.includes(t) || tagsStr.includes(t));
+          let qMethod = qMethods.length ? qMethods.join(", ") : (tagsStr.includes("safetensors") ? "safetensors" : "derivative");
           results.push({
             id: m.id,
             author: m.id.split("/")[0],
@@ -520,7 +523,7 @@ async function loadChildren(l2Idx, modelIdx, parentId, container) {
             likes: m.likes || 0,
             created_at: m.createdAt || "",
             updated_at: m.lastModified || "",
-            q_method: qMethod.length ? qMethod.join(", ") : "derivative",
+            q_method: qMethod,
             tags: m.tags || []
           });
         }
