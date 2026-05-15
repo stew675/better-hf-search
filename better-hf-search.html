@@ -206,8 +206,9 @@ function paramPosToValue(pos) { return PARAM_VALUES[pos]; }
 function paramValueToLabel(val) {
   if (val === Infinity) return ">1T";
   if (val === 0) return "0";
-  if (val >= 1000) return `${val / 1000}T`;
-  if (val >= 1) return `${val}B`;
+  if (val >= 1000) return `${Math.round(val / 100) / 10}T`;
+  if (val >= 5) return `${Math.round(val)}B`;
+  if (val >= 1) return `${Math.round(val * 10) / 10}B`;
   return `${Math.round(val * 1000)}M`;
 }
 function isInParamRange(paramB) {
