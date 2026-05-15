@@ -62,6 +62,12 @@
   #filter-bar .filter-chip.active, #task-filter-bar .filter-chip.active { color: #58a6ff; border-color: #58a6ff; }
   #filter-bar .filter-chip.inactive, #task-filter-bar .filter-chip.inactive { color: #484f58; }
   #filter-bar .filter-label, #task-filter-bar .filter-label { color: #8b949e; font-size: 0.78rem; margin-right: 4px; }
+  #get-results-btn { display: inline-flex; align-items: center; justify-content: center; padding: 6px 20px;
+    font-size: 0.82rem; font-weight: 600; border-radius: 14px; cursor: pointer; user-select: none;
+    background: #21262d; color: #484f58; border: 1px solid #30363d; transition: background 0.15s, color 0.15s, border-color 0.15s;
+    margin-left: auto; }
+  #get-results-btn.ready { background: #238636; color: #fff; border-color: #2ea043; cursor: pointer; }
+  #get-results-btn.ready:hover { background: #2ea043; }
 
   /* Range sliders */
   #date-slider, #param-slider { margin: 8px 0 6px; padding: 8px 14px 10px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; }
@@ -124,6 +130,7 @@
 <div id="task-filter-bar">
   <span class="filter-label">Task types:</span>
 </div>
+<div id="get-results-btn" style="display:flex;justify-content:center;margin:8px 0 12px;">Get Results</div>
 <table id="main-table">
   <thead>
     <tr>
@@ -151,6 +158,8 @@ const TASK_DISPLAY = ["text", "audio", "speech", "image", "video", "3d", "other"
 const activeTaskFilters = new Set(["text", "image"]);
 const LIMIT = 500;
 const fetchedTasks = new Set();
+let needsUpdate = false;
+function markDirty() { needsUpdate = true; document.getElementById("get-results-btn").classList.add("ready"); }
 let sliderFrom = -6;
 let sliderTo = 0;
 const PARAM_VALUES = [0,1,2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100,200,300,400,500,600,700,800,900,1000,Infinity];
@@ -315,7 +324,7 @@ function buildFilterBar() {
     chip.addEventListener("click", () => {
       applyFilterLogic(method);
       syncFilterChips();
-      refreshAllExpanded();
+      markDirty();
     });
     bar.appendChild(chip);
   });
@@ -330,7 +339,7 @@ function buildTaskFilterBar() {
     chip.addEventListener("click", () => {
       applyTaskLogic(task);
       syncFilterChips();
-      onTaskFilterChange();
+      markDirty();
     });
     bar.appendChild(chip);
   });
@@ -787,18 +796,45 @@ function buildDateSlider() {
   const read = () => { sliderFrom = parseInt(from.value); sliderTo = parseInt(to.value); };
 
   from.addEventListener("input", () => { clamp(); read(); updateDateUI(); });
-  from.addEventListener("change", () => { clamp(); read(); onDateChange(); });
+  from.addEventListener("change", () => { clamp(); read(); markDirty(); });
   to.addEventListener("input", () => { clamp(); read(); updateDateUI(); });
-  to.addEventListener("change", () => { clamp(); read(); onDateChange(); });
+  to.addEventListener("change", () => { clamp(); read(); markDirty(); });
 
   updateDateUI();
 }
 
-function onDateChange() {
-  updateDateUI();
-  window._authorData = computeAuthorData();
-  renderMain(window._authorData);
-  updateArrows();
+function applyFilters() {
+  if (!needsUpdate) return;
+  needsUpdate = false;
+  document.getElementById("get-results-btn").classList.remove("ready");
+  const tasks = resolveTasks();
+  const newTasks = tasks.filter(t => !fetchedTasks.has(t));
+  if (newTasks.length > 0) {
+    (async () => {
+      const status = document.getElementById("status");
+      status.textContent = `Fetching new task types…`;
+      const fresh = await fetchTasks(newTasks);
+      const seen = new Set((window._allFetched || []).map(m => m.id));
+      const all = [...(window._allFetched || [])];
+      for (const m of fresh) {
+        if (!seen.has(m.id)) {
+          seen.add(m.id);
+          all.push(m);
+        }
+      }
+      window._allFetched = all;
+      status.textContent = "";
+      window._authorData = computeAuthorData();
+      renderMain(window._authorData);
+      updateArrows();
+      refreshAllExpanded();
+    })();
+  } else {
+    window._authorData = computeAuthorData();
+    renderMain(window._authorData);
+    updateArrows();
+    refreshAllExpanded();
+  }
 }
 
 function updateDateUI() {
@@ -828,18 +864,11 @@ function buildParamSlider() {
   const read = () => { paramSliderFrom = parseInt(from.value); paramSliderTo = parseInt(to.value); };
 
   from.addEventListener("input", () => { clamp(); read(); updateParamUI(); });
-  from.addEventListener("change", () => { clamp(); read(); onParamChange(); });
+  from.addEventListener("change", () => { clamp(); read(); markDirty(); });
   to.addEventListener("input", () => { clamp(); read(); updateParamUI(); });
-  to.addEventListener("change", () => { clamp(); read(); onParamChange(); });
+  to.addEventListener("change", () => { clamp(); read(); markDirty(); });
 
   updateParamUI();
-}
-
-function onParamChange() {
-  updateParamUI();
-  window._authorData = computeAuthorData();
-  renderMain(window._authorData);
-  updateArrows();
 }
 
 function updateParamUI() {
@@ -871,6 +900,7 @@ document.querySelector("#main-table").addEventListener("click", e => {
   renderMain(window._authorData);
   updateArrows();
 });
+document.getElementById("get-results-btn").addEventListener("click", applyFilters);
 
 // ── Init ──
 async function fetchTasks(tasks) {
@@ -895,29 +925,6 @@ async function fetchTasks(tasks) {
     }
   }
   return allFetched;
-}
-async function onTaskFilterChange() {
-  const tasks = resolveTasks();
-  const newTasks = tasks.filter(t => !fetchedTasks.has(t));
-  let allFetched = window._allFetched || [];
-  if (newTasks.length > 0) {
-    const status = document.getElementById("status");
-    status.textContent = `Fetching new task types…`;
-    const fresh = await fetchTasks(newTasks);
-    const seen = new Set(allFetched.map(m => m.id));
-    for (const m of fresh) {
-      if (!seen.has(m.id)) {
-        seen.add(m.id);
-        allFetched.push(m);
-      }
-    }
-    window._allFetched = allFetched;
-    status.textContent = "";
-  }
-  window._authorData = computeAuthorData();
-  renderMain(window._authorData);
-  updateArrows();
-  refreshAllExpanded();
 }
 (async () => {
   const status = document.getElementById("status");
