@@ -352,9 +352,9 @@ function renderL2(idx, models, container) {
 
   const cols = [
     { key: "id", label: "Model ID" },
+    { key: "created_at", label: "Created", cls: "right" },
     { key: "downloads", label: "Downloads", cls: "right" },
-    { key: "likes", label: "Likes", cls: "right" },
-    { key: "created_at", label: "Created", cls: "right" }
+    { key: "likes", label: "Likes", cls: "right" }
   ];
 
   let html = `<table><thead><tr>`;
@@ -366,9 +366,9 @@ function renderL2(idx, models, container) {
   sorted.forEach((m, mIdx) => {
     html += `<tr class="l2-row" data-l2-idx="${idx}" data-model-idx="${mIdx}" data-model="${m.id}">
       <td><span class="toggle" id="t2-${idx}-${mIdx}">▶</span><a href="https://huggingface.co/${m.id}" target="_blank">${truncate(m.id.split("/").slice(1).join("/"), 40)}</a></td>
+      <td class="right">${fmtDate(m.created_at)} <span style="color:#484f58;font-size:0.75rem">(${fmtAge(m.created_at)})</span></td>
       <td class="right">${fmt(m.downloads)}</td>
       <td class="right"><span class="likes-icon">♥</span>${fmt(m.likes)}</td>
-      <td class="right">${fmtDate(m.created_at)} <span style="color:#484f58;font-size:0.75rem">(${fmtAge(m.created_at)})</span></td>
     </tr>
     <tr class="detail-row" id="d2-${idx}-${mIdx}" style="display:none"><td colspan="4"><div class="detail-inner" id="i2-${idx}-${mIdx}"></div></td></tr>`;
   });
@@ -482,10 +482,22 @@ function renderL3(l2Idx, modelIdx, parentId, children, container) {
     quants
   }));
 
-  groupEntries.sort((a, b) => b.totalDownloads - a.totalDownloads);
+  const state = detailSort[`l3-${l2Idx}-${modelIdx}`] || { key: "totalDownloads", asc: false };
+  const sorted = sortRows(groupEntries, state.key, state.asc);
 
-  let html = `<table><thead><tr><th>Quant Author</th><th class="right">Models</th><th class="right">Downloads</th><th class="right"></th></tr></thead><tbody>`;
-  groupEntries.forEach((g, gIdx) => {
+  const cols = [
+    { key: "author", label: "Quant Author" },
+    { key: "count", label: "Models", cls: "right" },
+    { key: "totalDownloads", label: "Downloads", cls: "right" }
+  ];
+
+  let html = `<table><thead><tr>`;
+  cols.forEach(c => {
+    html += `<th data-key="${c.key}" class="${c.cls || ''}">${c.label} <span class="arrow">${state.key === c.key ? (state.asc ? "▲" : "▼") : ""}</span></th>`;
+  });
+  html += `<th class="right"></th></tr></thead><tbody>`;
+
+  sorted.forEach((g, gIdx) => {
     html += `<tr class="l3-row" data-l3-l2="${l2Idx}" data-l3-model-idx="${modelIdx}" data-l3-parent="${parentId}" data-l3-idx="${gIdx}" data-l3-author="${g.author}">
       <td><span class="toggle" id="t3-${l2Idx}-${modelIdx}-${gIdx}">▶</span><a href="https://huggingface.co/${g.author}" target="_blank">${g.author}</a></td>
       <td class="right">${g.count}</td>
@@ -497,6 +509,17 @@ function renderL3(l2Idx, modelIdx, parentId, children, container) {
   html += `</tbody></table>`;
   html += `<div class="detail-count">${filtered.length} child model(s) from ${groupEntries.length} author(s)${filtered.length !== children.length ? ` (filtered from ${children.length})` : ''}</div>`;
   container.innerHTML = html;
+
+  container.querySelectorAll("thead th").forEach(th => {
+    const key = th.dataset.key;
+    if (!key) return;
+    th.addEventListener("click", () => {
+      if (state.key === key) state.asc = !state.asc;
+      else { state.key = key; state.asc = false; }
+      detailSort[`l3-${l2Idx}-${modelIdx}`] = state;
+      renderL3(l2Idx, modelIdx, parentId, children, container);
+    });
+  });
 
   container.querySelectorAll(".l3-row").forEach(tr => {
     tr.addEventListener("click", handleL3Click);
