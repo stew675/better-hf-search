@@ -65,11 +65,43 @@
   #filter-bar button { font-size: 0.72rem; padding: 3px 10px; border-radius: 12px; cursor: pointer;
                        background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
   #filter-bar button:hover { background: #30363d; }
+
+  /* Date range slider */
+  #date-slider { margin: 8px 0 6px; padding: 8px 14px 10px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; }
+  #date-slider .ds-title { font-size: 0.78rem; color: #8b949e; margin-bottom: 4px; font-weight: 600; }
+  .ds-track-wrap { position: relative; height: 28px; }
+  .ds-track-bg, .ds-track-fill { position: absolute; top: 11px; height: 6px; border-radius: 3px; pointer-events: none; }
+  .ds-track-bg { left: 0; right: 0; background: #30363d; }
+  .ds-track-fill { background: #58a6ff; z-index: 1; }
+  .ds-track-wrap input[type=range] { position: absolute; width: 100%; top: 2px; height: 24px; margin: 0;
+    -webkit-appearance: none; appearance: none; background: transparent; pointer-events: none; z-index: 2; }
+  .ds-track-wrap input[type=range]::-webkit-slider-runnable-track { height: 6px; background: transparent; border-radius: 3px; pointer-events: none; }
+  .ds-track-wrap input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%;
+    background: #58a6ff; cursor: pointer; pointer-events: auto; border: 2px solid #0d1117; margin-top: -6px; }
+  .ds-track-wrap input[type=range]::-moz-range-track { height: 6px; background: transparent; border-radius: 3px; pointer-events: none; }
+  .ds-track-wrap input[type=range]::-moz-range-thumb { height: 18px; width: 18px; border-radius: 50%;
+    background: #58a6ff; cursor: pointer; pointer-events: auto; border: 2px solid #0d1117; }
+  .ds-labels { display: flex; justify-content: space-between; font-size: 0.72rem; margin-top: 2px; }
+  .ds-labels .ds-l { color: #8b949e; }
+  .ds-labels .ds-v { color: #58a6ff; font-weight: 500; }
 </style>
 </head>
 <body>
 <h1>HF Base Model Authors</h1>
 <div id="status">Fetching models…</div>
+<div id="date-slider">
+  <div class="ds-title">Date Range</div>
+  <div class="ds-track-wrap">
+    <div class="ds-track-bg"></div>
+    <div class="ds-track-fill" id="ds-fill"></div>
+    <input type="range" id="ds-from" min="-25" max="0" value="-6" step="1">
+    <input type="range" id="ds-to" min="-25" max="0" value="0" step="1">
+  </div>
+  <div class="ds-labels">
+    <span><span class="ds-l">From:</span> <span class="ds-v" id="ds-from-label">6 mo ago</span></span>
+    <span><span class="ds-l">To:</span> <span class="ds-v" id="ds-to-label">Now</span></span>
+  </div>
+</div>
 <div id="filter-bar">
   <span class="filter-label">Quant types:</span>
 </div>
@@ -89,7 +121,8 @@
 <script>
 const TASKS = ["text-generation", "image-text-to-text", "image-to-text"];
 const LIMIT = 500;
-const CUTOFF = new Date(Date.now() - 183 * 86400000);
+let sliderFrom = -6;
+let sliderTo = 0;
 const Q_METHODS = ["awq", "gptq", "bitsandbytes", "eetq", "aqlm", "gguf", "exl2", "qqx", "marlin", "bnb", "fp4", "nf4", "int8", "int4", "q8", "q4"];
 const FILTER_DISPLAY = ["awq", "gptq", "gguf", "exl2", "marlin", "bitsandbytes", "aqlm", "eetq", "qqx"];
 const activeFilters = new Set(FILTER_DISPLAY);
@@ -120,6 +153,38 @@ function fmtAge(d) {
   return `${(days / 365).toFixed(1)}y`;
 }
 function truncate(s, max) { return s.length > max ? s.slice(0, max) + "…" : s; }
+
+function sliderValueToDate(val) {
+  if (val === -25) return new Date("2020-01-01");
+  const d = new Date();
+  d.setMonth(d.getMonth() + val);
+  return d;
+}
+function sliderValueToLabel(val) {
+  if (val === -25) return "Anytime";
+  if (val === 0) return "Now";
+  const d = new Date();
+  d.setMonth(d.getMonth() + val);
+  return d.toLocaleString("en-US", { month: "short", year: "numeric" });
+}
+function isInDateRange(createdAt) {
+  if (!createdAt) return false;
+  const c = new Date(createdAt);
+  return c >= sliderValueToDate(sliderFrom) && c <= sliderValueToDate(sliderTo);
+}
+function computeAuthorData() {
+  const all = window._allFetched || [];
+  const map = {};
+  all.forEach(m => {
+    if (!isInDateRange(m.createdAt)) return;
+    const author = m.id.split("/")[0];
+    if (!map[author]) map[author] = { author, count: 0, totalDownloads: 0, totalLikes: 0 };
+    map[author].count++;
+    map[author].totalDownloads += m.downloads || 0;
+    map[author].totalLikes += m.likes || 0;
+  });
+  return Object.values(map);
+}
 
 // ── State ──
 let sortKey = "totalDownloads";
@@ -204,7 +269,7 @@ function renderMain(authorData) {
 
   tbody.innerHTML = html;
   document.getElementById("count").textContent =
-    `${sorted.length} authors with base models (created within 6 months). Click to expand.`;
+    `${sorted.length} authors with base models in selected date range. Click to expand.`;
 
   tbody.querySelectorAll(".l1-row").forEach(tr => {
     tr.addEventListener("click", handleL1Click);
@@ -227,7 +292,7 @@ function handleL1Click(e) {
       inner.innerHTML = '<div class="detail-loading">Fetching base models…</div>';
       loadAuthorModels(idx, author, inner);
     } else {
-      renderL2(idx, cache[author], inner);
+      renderL2(idx, cache[author].filter(m => isInDateRange(m.created_at)), inner);
     }
   } else {
     detailRow.style.display = "none";
@@ -242,11 +307,7 @@ async function loadAuthorModels(idx, author, container) {
     );
     if (!cache[author + "_models"]) cache[author + "_models"] = models;
 
-    const baseModels = models.filter(m => {
-      const created = m.createdAt;
-      if (!created || new Date(created) < CUTOFF) return false;
-      return isBase(m);
-    }).map(m => ({
+    const baseModels = models.filter(m => isBase(m)).map(m => ({
       id: m.id,
       downloads: m.downloads || 0,
       likes: m.likes || 0,
@@ -257,25 +318,26 @@ async function loadAuthorModels(idx, author, container) {
 
     cache[author] = baseModels;
 
-    // Update Level 1 data and that row's cells
+    const dated = baseModels.filter(m => isInDateRange(m.created_at));
+
     const ad = window._authorData;
     for (const a of ad) {
       if (a.author === author) {
-        a.count = baseModels.length;
-        a.totalDownloads = baseModels.reduce((s, m) => s + m.downloads, 0);
-        a.totalLikes = baseModels.reduce((s, m) => s + m.likes, 0);
+        a.count = dated.length;
+        a.totalDownloads = dated.reduce((s, m) => s + m.downloads, 0);
+        a.totalLikes = dated.reduce((s, m) => s + m.likes, 0);
         break;
       }
     }
     const row = document.querySelector(`.l1-row[data-author="${author}"]`);
     if (row) {
       const cells = row.querySelectorAll("td");
-      cells[1].textContent = baseModels.length;
-      cells[2].textContent = fmt(baseModels.reduce((s, m) => s + m.downloads, 0));
-      cells[3].textContent = fmt(baseModels.reduce((s, m) => s + m.likes, 0));
+      cells[1].textContent = dated.length;
+      cells[2].textContent = fmt(dated.reduce((s, m) => s + m.downloads, 0));
+      cells[3].textContent = fmt(dated.reduce((s, m) => s + m.likes, 0));
     }
 
-    renderL2(idx, baseModels, container);
+    renderL2(idx, dated, container);
   } catch (err) {
     container.innerHTML = `<div class="detail-error">Error: ${err.message}</div>`;
   }
@@ -518,7 +580,7 @@ function refreshAllExpanded() {
       const models = cache[author];
       if (models) {
         const inner = document.getElementById(`i1-${idx}`);
-        renderL2(idx, models, inner);
+        renderL2(idx, models.filter(m => isInDateRange(m.created_at)), inner);
       }
     }
   });
@@ -553,6 +615,44 @@ function refreshAllExpanded() {
   });
 }
 
+// ── Date slider ──
+function buildDateSlider() {
+  const from = document.getElementById("ds-from");
+  const to = document.getElementById("ds-to");
+
+  from.addEventListener("input", () => {
+    if (parseInt(from.value) > parseInt(to.value)) from.value = to.value;
+    onDateChange();
+  });
+  to.addEventListener("input", () => {
+    if (parseInt(to.value) < parseInt(from.value)) to.value = from.value;
+    onDateChange();
+  });
+
+  updateDateUI();
+}
+
+function onDateChange() {
+  sliderFrom = parseInt(document.getElementById("ds-from").value);
+  sliderTo = parseInt(document.getElementById("ds-to").value);
+  updateDateUI();
+  window._authorData = computeAuthorData();
+  renderMain(window._authorData);
+  updateArrows();
+}
+
+function updateDateUI() {
+  document.getElementById("ds-from-label").textContent = sliderValueToLabel(sliderFrom);
+  document.getElementById("ds-to-label").textContent = sliderValueToLabel(sliderTo);
+
+  const min = -25, range = 25;
+  const left = ((sliderFrom - min) / range) * 100;
+  const right = ((sliderTo - min) / range) * 100;
+  const fill = document.getElementById("ds-fill");
+  fill.style.left = left + "%";
+  fill.style.width = (right - left) + "%";
+}
+
 // ── Main Table Sort ──
 function updateArrows() {
   document.querySelectorAll("#main-table thead th").forEach(th => {
@@ -575,7 +675,7 @@ document.querySelector("#main-table thead").addEventListener("click", e => {
 (async () => {
   const status = document.getElementById("status");
   const seen = new Set();
-  const allModels = [];
+  const allFetched = [];
 
   for (let i = 0; i < TASKS.length; i++) {
     status.textContent = `Fetching ${TASKS[i]}… (${i + 1}/${TASKS.length})`;
@@ -583,34 +683,23 @@ document.querySelector("#main-table thead").addEventListener("click", e => {
       const models = await fetchModels(TASKS[i]);
       for (const m of models) {
         if (seen.has(m.id)) continue;
-        const created = m.createdAt;
-        if (!created || new Date(created) < CUTOFF) continue;
         if (!isBase(m)) continue;
         seen.add(m.id);
-        allModels.push(m);
+        allFetched.push(m);
       }
     } catch (e) {
       status.textContent = `Error fetching ${TASKS[i]}: ${e.message}`;
     }
   }
 
-  // Group by author
-  const authorMap = {};
-  allModels.forEach(m => {
-    const author = m.id.split("/")[0];
-    if (!authorMap[author]) authorMap[author] = { author, count: 0, totalDownloads: 0, totalLikes: 0 };
-    authorMap[author].count++;
-    authorMap[author].totalDownloads += m.downloads || 0;
-    authorMap[author].totalLikes += m.likes || 0;
-  });
-
-  const authorData = Object.values(authorMap);
-  window._authorData = authorData;
+  window._allFetched = allFetched;
   sortKey = "totalDownloads";
   sortAsc = false;
   updateArrows();
   buildFilterBar();
-  renderMain(authorData);
+  buildDateSlider();
+  window._authorData = computeAuthorData();
+  renderMain(window._authorData);
   status.textContent = "Done.";
 })();
 </script>

@@ -15,10 +15,11 @@ AGENTS.md               — This file
 ## Architecture
 
 ### Data Flow
-1. **Init**: Fetch top 500 models per pipeline task → deduplicate → filter by age (6 months) and base-model status → group by author
-2. **L1 expand**: Fetch full author model list (1000) → filter base models → update L1 counts
-3. **L2 expand**: Search HF API for children by parent ID and model name → match on `cardData.base_model` or quant tags
-4. **L3/L4**: Group children by quant author, apply active filters, render sortable table
+1. **Init**: Fetch top 500 models per pipeline task → deduplicate → filter by base-model status → store all in `window._allFetched`
+2. **Render**: `computeAuthorData()` applies the date slider range to `_allFetched` → groups by author → renders L1
+3. **L1 expand**: Fetch full author model list (1000) → filter base models → cache full list → apply date slider filter → render L2
+4. **L2 expand**: Search HF API for children by parent ID and model name → match on `cardData.base_model` or quant tags
+5. **L3/L4**: Group children by quant author, apply active filters, render sortable table
 
 ### State Management
 - `window._authorData` — L1 author records (mutable, updated on L1 expand)
@@ -42,11 +43,15 @@ AGENTS.md               — This file
 | `refreshAllExpanded()` | Re-renders all open sections (filter changes) |
 | `matchesFilter(qMethod)` | Checks if a quant method passes active filters |
 
+### State (additional)
+
+- `window._allFetched` — All base models fetched during init (no date filter)
+- `sliderFrom` / `sliderTo` — Date slider positions (-25..0, months relative to now)
+
 ### Constants
 
 - `TASKS` — Pipeline tags to search
 - `LIMIT` — Models fetched per task
-- `CUTOFF` — 183 days ago
 - `Q_METHODS` — All quantization keywords for detection
 - `FILTER_DISPLAY` — Subset shown in filter bar
 
