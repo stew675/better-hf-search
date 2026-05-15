@@ -54,7 +54,9 @@
   .cell-flex { display: flex; align-items: center; }
 
  /* Filter bar */
-  #filter-bar, #from-bar, #to-bar { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; align-items: center; }
+  #task-bars { display: flex; flex-wrap: wrap; gap: 20px; margin: 8px 0 12px; align-items: center; }
+  #from-bar, #to-bar { flex: 0 0 auto; }
+  #filter-bar, #from-bar, #to-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   #filter-bar .filter-chip, #from-bar .filter-chip, #to-bar .filter-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem;
                         padding: 3px 10px; border-radius: 14px; cursor: pointer; user-select: none;
                         background: #161b22; border: 1px solid #30363d; transition: background 0.15s, color 0.15s, border-color 0.15s; }
@@ -124,14 +126,16 @@
     <span><span class="ds-l">To:</span> <span class="ds-v" id="ps-to-label">&gt;1T</span></span>
   </div>
 </div>
-<div id="filter-bar">
-  <span class="filter-label">Quant types:</span>
-</div>
+<div id="task-bars">
 <div id="from-bar">
   <span class="filter-label">From:</span>
 </div>
 <div id="to-bar">
   <span class="filter-label">To:</span>
+</div>
+</div>
+<div id="filter-bar">
+  <span class="filter-label">Quant types:</span>
 </div>
 <div id="get-results-btn" style="display:flex;justify-content:center;margin:8px 0 12px;">Get Results</div>
 <table id="main-table">
