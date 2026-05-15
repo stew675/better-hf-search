@@ -150,13 +150,13 @@
 <div id="filter-bar">
   <span class="filter-label">Quant types:</span>
 </div>
-<span id="api-counter" class="filter-label" style="margin-left:auto; font-variant-numeric: tabular-nums; min-width: 100px; text-align: right;">API Calls: 000</span>
+<span id="api-counter" class="filter-label" style="margin-left:auto; font-variant-numeric: tabular-nums; min-width: 100px; text-align: right;">API Calls: 0</span>
 </div>
 <div id="get-results-btn" style="display:flex;justify-content:center;margin:8px 0 12px;">Get Results</div>
 <table id="main-table">
   <thead>
     <tr>
-      <th data-key="author">Author <span class="arrow"></span></th>
+      <th data-key="author">Model Author <span class="arrow"></span></th>
       <th data-key="count" class="right">Base Models <span class="arrow"></span></th>
       <th data-key="totalDownloads" class="right">Total Downloads <span class="arrow"></span></th>
       <th data-key="totalLikes" class="right">Total Likes <span class="arrow"></span></th>
@@ -197,7 +197,7 @@ const fetchedTasks = new Set();
 let fetchedUntagged = false;
 let needsUpdate = false;
 let apiCalls = 0;
-function incApiCalls(n) { apiCalls += n; document.getElementById("api-counter").textContent = "API Calls: " + String(apiCalls).padStart(3, "0"); }
+function incApiCalls(n) { apiCalls += n; document.getElementById("api-counter").textContent = "API Calls: " + String(apiCalls).padStart(4); }
 function markDirty() { needsUpdate = true; document.getElementById("get-results-btn").classList.add("ready"); }
 let sliderFrom = -6;
 let sliderTo = 0;
@@ -223,11 +223,25 @@ function matchesTaskFilter(pipelineTag) {
   return fromMatch && toMatch;
 }
 
+const _apiTimestamps = [];
+const RATE_LIMIT = 10;
+const RATE_WINDOW = 1000;
+
 async function fetchJson(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  incApiCalls(1);
-  return res.json();
+  while (true) {
+    const now = Date.now();
+    const recent = _apiTimestamps.filter(t => now - t < RATE_WINDOW);
+    _apiTimestamps.length = 0;
+    _apiTimestamps.push(...recent);
+    if (recent.length < RATE_LIMIT) {
+      _apiTimestamps.push(now);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      incApiCalls(1);
+      return res.json();
+    }
+    await new Promise(r => setTimeout(r, RATE_WINDOW - (now - recent[0]) + 10));
+  }
 }
 
 async function fetchModels(task) {
@@ -568,7 +582,7 @@ async function loadAuthorModels(idx, author, container) {
 
     renderL2(idx, dated, container);
 
-    const unknownModels = baseModels.filter(m => m.paramB === null);
+    const unknownModels = dated.filter(m => m.paramB === null);
     if (unknownModels.length > 0) {
       for (let i = 0; i < unknownModels.length; i += 5) {
         const batch = unknownModels.slice(i, i + 5);
@@ -1055,6 +1069,7 @@ return allFetched;
   buildParamSlider();
   syncFilterChips();
   markDirty();
+  document.getElementById("api-counter").textContent = "API Calls: " + String(0).padStart(4);
   status.textContent = "Select your filters, then click Get Results.";
   renderMain([]);
 })();

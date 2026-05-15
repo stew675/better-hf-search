@@ -1,25 +1,25 @@
-# AGENTS.md — Better HF Search
+# AGENTS.md — Streamlined HF Model Search
 
 ## Project Overview
 
-Single-file, zero-dependency HTML/JS app that explores HuggingFace base models in a 4-level hierarchy. All logic lives in `better-hf-search.html`.
+Single-file, zero-dependency HTML/JS app that explores HuggingFace base models in a 4-level hierarchy. All logic lives in `streamlined-hf-model-search.html`.
 
 ## File Structure
 
 ```
-better-hf-search.html   — Single-file app (HTML + CSS + JS)
-README.md               — User documentation
-AGENTS.md               — This file
+streamlined-hf-model-search.html   — Single-file app (HTML + CSS + JS)
+README.md                — User documentation
+AGENTS.md                — This file
 ```
 
 ## Architecture
 
 ### Data Flow
-1. **Init**: Fetch top 500 models per pipeline task → deduplicate → filter by base-model status → store all in `window._allFetched`
-2. **Render**: `computeAuthorData()` applies date + param slider ranges to `_allFetched` → groups by author → renders L1
-3. **L1 expand**: Fetch full author model list (1000) → filter base models → cache full list → apply date + param slider filters → render L2 → deepen unknown `paramB` in batches of 5 via individual model API
-4. **L2 expand**: Search HF API for children by parent ID and model name → match on `cardData.base_model` or quant tags
-5. **L3/L4**: Group children by quant author, apply active filters, render sortable table
+1. **Init**: Wait for user to click "Get Results". Compute active pipeline tasks from From/To filter bars → fetch top 500 models per pipeline task → deduplicate → filter by base-model status → store all in `window._allFetched`.
+2. **Render**: `computeAuthorData()` applies date + param slider ranges and From/To/Special/Quant filters to `_allFetched` → groups by author → renders L1.
+3. **L1 expand**: Fetch full author model list (1000) → filter base models → cache full list → apply date + param slider filters → render L2 → deepen unknown `paramB` in batches of 5 via individual model API (only for models that pass the date/param filters).
+4. **L2 expand**: Search HF API for children by parent ID and model name → match on `cardData.base_model` or quant tags.
+5. **L3/L4**: Group children by quant author, apply active quant filters, render sortable table.
 
 ### State Management
 - `window._authorData` — L1 author records (mutable, updated on L1 expand, slider changes)
@@ -29,9 +29,12 @@ AGENTS.md               — This file
   - `"{author}_models"` → raw API response for author
   - `"children-{parentId}"` → L3/L4 children array
 - `detailSort` — Per-section sort state keyed by `"l2-{idx}"`, `"l3-{l2}-{model}"`, `"l4-{l2}-{model}-{g}"`
-- `activeFilters` — Set of enabled quant type strings
+- `activeFilters` — Set of enabled quant type strings (awq, gguf, mlx, safetensors, others)
+- `activeFromFilters` / `activeToFilters` — Sets controlling which pipeline tags resolve
+- `activeSpecialFilters` — Set for special toggles (include untagged)
 - `sliderFrom` / `sliderTo` — Date slider positions (-25..0, months relative to now)
 - `paramSliderFrom` / `paramSliderTo` — Param size slider positions (0..29, mapped via `PARAM_VALUES`)
+- `_apiTimestamps` — Sliding window for API rate limiting (max 10 req/s)
 
 ### Key Functions
 
@@ -42,10 +45,10 @@ AGENTS.md               — This file
 | `renderL3(l2Idx, modelIdx, parentId, children, container)` | Renders L3 quant author groups |
 | `renderL4(l2Idx, modelIdx, gIdx, quants, container)` | Renders L4 individual quants |
 | `loadAuthorModels(idx, author, container)` | Async fetch for L2, deepens unknown `paramB` in batches of 5 |
-| `loadChildren(l2Idx, modelIdx, parentId, container)` | Async fetch for L3/L4 |
+| `loadChildren(l2Idx, modelIdx, parentId, container)` | Async fetch for L3/L4 (two search queries) |
 | `refreshAllExpanded()` | Re-renders all open sections (filter/slider changes) |
 | `matchesFilter(qMethod)` | Checks if a quant method passes active filters |
-| `computeAuthorData()` | Applies date + param filters to `_allFetched`, groups by author |
+| `computeAuthorData()` | Applies date/param/From/To/Special/Quant filters to `_allFetched`, groups by author |
 | `isInDateRange(createdAt)` | Date slider range check |
 | `isInParamRange(paramB)` | Param slider range check |
 | `getParamCount(model)` | Extracts param count from `safetensors.total` or B/M suffix in model ID |
@@ -54,14 +57,20 @@ AGENTS.md               — This file
 | `buildParamSlider()` | Builds the param size dual-range slider |
 | `sortRows(rows, key, asc)` | Generic sort for any level |
 | `updateArrows()` | Updates sort arrow indicators on L1 table header |
+| `resolveTasks()` | Computes active pipeline tags from From/To filter bars |
+| `fetchJson(url)` | Rate-limited fetch wrapper (≤10 req/s) |
 
 ### Constants
 
-- `TASKS` — Pipeline tags to search (`text-generation`, `image-text-to-text`, `image-to-text` — see full list at `packages/tasks/src/pipelines.ts` in huggingface.js)
+- `TO_TAGS` — 17 pipeline tag definitions with `from` and `to` modalities
+- `FROM_OPTIONS` — `["text", "image", "audio", "video", "any", "all"]`
+- `TO_OPTIONS` — `["text", "speech", "audio", "image", "video", "3d", "any", "all"]`
 - `LIMIT` — Models fetched per task (500)
 - `PARAM_VALUES` — 30 positions mapping to param sizes: 0..10 (step 1), 10..100 (step 10), 100..1000 (step 100), >1T (Infinity)
 - `Q_METHODS` — All quantization keywords for detection
-- `FILTER_DISPLAY` — Subset shown in filter bar (AWQ, GPTQ, GGUF, EXL2, Marlin, BitsAndBytes, AQLM, EETQ, MLX)
+- `FILTER_DISPLAY` — Subset shown in filter bar (awq, gguf, mlx, safetensors, others)
+- `RATE_LIMIT` — Max API calls per second (10)
+- `RATE_WINDOW` — Rate limit window in ms (1000)
 
 ## Conventions
 
@@ -74,17 +83,19 @@ AGENTS.md               — This file
 
 ## Testing
 
-Open `better-hf-search.html` in a browser. Validate:
-1. L1 loads with authors and counts
-2. Clicking an author expands to L2 with matching count
-3. Clicking a base model expands to L3 (quant author groups)
-4. Clicking a quant author expands to L4 (individual models)
-5. Filter checkboxes update all expanded sections
-6. Column headers toggle sort direction
-7. Links open model pages in new tabs
-8. Date slider changes re-render L1 and all open L2 sections
-9. Param slider changes re-render L1 and all open L2 sections
-10. L2 shows "Params" column; unknown params fetch in batches of 5
+Open `streamlined-hf-model-search.html` in a browser. Validate:
+1. L1 loads with authors and counts after clicking "Get Results"
+2. Changing From/To filters changes activated pipeline tags
+3. Clicking an author expands to L2 with matching count
+4. Clicking a base model expands to L3 (quant author groups)
+5. Clicking a quant author expands to L4 (individual models)
+6. Quant filter chips update all expanded sections
+7. Column headers toggle sort direction
+8. Links open model pages in new tabs
+9. Date slider changes re-render L1 and all open L2 sections
+10. Param slider changes re-render L1 and all open L2 sections
+11. L2 shows "Params" column; unknown params fetch in batches of 5
+12. API call counter updates and rate limiting stays ≤10 req/s
 
 ## Common Pitfalls
 
@@ -94,5 +105,6 @@ Open `better-hf-search.html` in a browser. Validate:
 - **Cache keys**: `children-{parentId}` uses the full model ID (e.g., `Qwen/Qwen2.5-7B`).
 - **Author name stripping**: L2 displays `m.id.split("/").slice(1).join("/")` to avoid repeating the author.
 - **L1 sort selector**: Uses `#main-table > thead > tr > th` to avoid L2/L3 nested `<th>` triggering. Do NOT delegate to `#main-table thead`.
-- **Param deepening**: Only fires for the single author the user expands, in batches of 5 — prevents spamming the API for all unknowns at once.
+- **Param deepening**: Only fires for the single author the user expands, in batches of 5, and only for models that pass the current date/param filters — prevents spamming the API for invisible models.
 - **Search endpoint limitations**: The search API (`/api/models?search=...`) never returns `safetensors` or `config` data even with `full=true`. The individual model API (`/api/models/{id}?full=true`) does, which is why deepening is needed for models without B/M in their name.
+- **Rate limiting**: `fetchJson` uses a sliding-window rate limiter (10 calls/sec). Deepening batches of 5 may be delayed if the window is saturated by the initial author fetch.
