@@ -45,8 +45,9 @@ AGENTS.md               — This file
 
 ### State (additional)
 
-- `window._allFetched` — All base models fetched during init (no date filter)
+- `window._allFetched` — All base models fetched during init (no date/param filter)
 - `sliderFrom` / `sliderTo` — Date slider positions (-25..0, months relative to now)
+- `paramSliderFrom` / `paramSliderTo` — Param size slider positions (0..29, mapped via PARAM_VALUES)
 
 ### Constants
 

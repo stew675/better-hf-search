@@ -66,22 +66,24 @@
                        background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
   #filter-bar button:hover { background: #30363d; }
 
-  /* Date range slider */
-  #date-slider { margin: 8px 0 6px; padding: 8px 14px 10px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; }
-  #date-slider .ds-title { font-size: 0.78rem; color: #8b949e; margin-bottom: 4px; font-weight: 600; }
+  /* Range sliders */
+  #date-slider, #param-slider { margin: 8px 0 6px; padding: 8px 14px 10px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; }
+  #date-slider .ds-title, #param-slider .ds-title { font-size: 0.78rem; color: #8b949e; margin-bottom: 4px; font-weight: 600; }
   .ds-track-wrap { position: relative; height: 28px; }
   .ds-track-bg, .ds-track-fill { position: absolute; top: 11px; height: 6px; border-radius: 3px; pointer-events: none; }
   .ds-track-bg { left: 0; right: 0; background: #30363d; }
   .ds-track-fill { background: #58a6ff; z-index: 1; }
   .ds-track-wrap input[type=range] { position: absolute; width: 100%; top: 2px; height: 24px; margin: 0;
     -webkit-appearance: none; appearance: none; background: transparent; pointer-events: none; }
-  #ds-from { z-index: 3; }
-  #ds-to { z-index: 2; }
+  #ds-from, #ps-from { z-index: 3; }
+  #ds-to, #ps-to { z-index: 2; }
   .ds-track-wrap input[type=range]::-webkit-slider-runnable-track { height: 6px; background: transparent; border-radius: 3px; pointer-events: none; }
   .ds-track-wrap input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%;
     cursor: pointer; pointer-events: auto; border: 2px solid #0d1117; margin-top: -6px; }
-  #ds-from::-moz-range-thumb, #ds-from::-webkit-slider-thumb { background: #da3633; }
-  #ds-to::-moz-range-thumb, #ds-to::-webkit-slider-thumb { background: #3fb950; }
+  #ds-from::-moz-range-thumb, #ds-from::-webkit-slider-thumb,
+  #ps-from::-moz-range-thumb, #ps-from::-webkit-slider-thumb { background: #da3633; }
+  #ds-to::-moz-range-thumb, #ds-to::-webkit-slider-thumb,
+  #ps-to::-moz-range-thumb, #ps-to::-webkit-slider-thumb { background: #3fb950; }
   .ds-track-wrap input[type=range]::-moz-range-track { height: 6px; background: transparent; border-radius: 3px; pointer-events: none; }
   .ds-track-wrap input[type=range]::-moz-range-thumb { height: 18px; width: 18px; border-radius: 50%;
     cursor: pointer; pointer-events: auto; border: 2px solid #0d1117; }
@@ -106,6 +108,19 @@
     <span><span class="ds-l">To:</span> <span class="ds-v" id="ds-to-label">Now</span></span>
   </div>
 </div>
+<div id="param-slider">
+  <div class="ds-title">Parameter Size</div>
+  <div class="ds-track-wrap">
+    <div class="ds-track-bg"></div>
+    <div class="ds-track-fill" id="ps-fill"></div>
+    <input type="range" id="ps-from" min="0" max="29" value="0" step="1">
+    <input type="range" id="ps-to" min="0" max="29" value="29" step="1">
+  </div>
+  <div class="ds-labels">
+    <span><span class="ds-l">From:</span> <span class="ds-v" id="ps-from-label">0</span></span>
+    <span><span class="ds-l">To:</span> <span class="ds-v" id="ps-to-label">&gt;1T</span></span>
+  </div>
+</div>
 <div id="filter-bar">
   <span class="filter-label">Quant types:</span>
 </div>
@@ -127,6 +142,9 @@ const TASKS = ["text-generation", "image-text-to-text", "image-to-text"];
 const LIMIT = 500;
 let sliderFrom = -6;
 let sliderTo = 0;
+const PARAM_VALUES = [0,1,2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100,200,300,400,500,600,700,800,900,1000,Infinity];
+let paramSliderFrom = 0;
+let paramSliderTo = 29;
 const Q_METHODS = ["awq", "gptq", "bitsandbytes", "eetq", "aqlm", "gguf", "exl2", "marlin", "mlx", "bnb", "fp4", "nf4", "int8", "int4", "q8", "q4"];
 const FILTER_DISPLAY = ["awq", "gptq", "gguf", "exl2", "marlin", "bitsandbytes", "aqlm", "eetq", "mlx"];
 const activeFilters = new Set(FILTER_DISPLAY);
@@ -176,11 +194,30 @@ function isInDateRange(createdAt) {
   const c = new Date(createdAt);
   return c >= sliderValueToDate(sliderFrom) && c <= sliderValueToDate(sliderTo);
 }
+function getParamCount(m) {
+  if (m.safetensors && m.safetensors.total) return m.safetensors.total / 1e9;
+  const match = m.id.match(/(\d+\.?\d*)[Bb]/);
+  if (match) return parseFloat(match[1]);
+  return null;
+}
+function paramPosToValue(pos) { return PARAM_VALUES[pos]; }
+function paramValueToLabel(val) {
+  if (val === Infinity) return ">1T";
+  if (val >= 1000) return `${val / 1000}T`;
+  return `${val}B`;
+}
+function isInParamRange(paramB) {
+  if (paramB === null || paramB === undefined) return true;
+  const fromVal = paramPosToValue(paramSliderFrom);
+  const toVal = paramPosToValue(paramSliderTo);
+  return paramB >= fromVal && (toVal === Infinity || paramB <= toVal);
+}
 function computeAuthorData() {
   const all = window._allFetched || [];
   const map = {};
   all.forEach(m => {
     if (!isInDateRange(m.createdAt)) return;
+    if (!isInParamRange(m.paramB)) return;
     const author = m.id.split("/")[0];
     if (!map[author]) map[author] = { author, count: 0, totalDownloads: 0, totalLikes: 0 };
     map[author].count++;
@@ -273,7 +310,7 @@ function renderMain(authorData) {
 
   tbody.innerHTML = html;
   document.getElementById("count").textContent =
-    `${sorted.length} authors with base models in selected date range. Click to expand.`;
+    `${sorted.length} authors with base models in selected range. Click to expand.`;
 
   tbody.querySelectorAll(".l1-row").forEach(tr => {
     tr.addEventListener("click", handleL1Click);
@@ -296,7 +333,7 @@ function handleL1Click(e) {
       inner.innerHTML = '<div class="detail-loading">Fetching base models…</div>';
       loadAuthorModels(idx, author, inner);
     } else {
-      renderL2(idx, cache[author].filter(m => isInDateRange(m.created_at)), inner);
+      renderL2(idx, cache[author].filter(m => isInDateRange(m.created_at) && isInParamRange(m.paramB)), inner);
     }
   } else {
     detailRow.style.display = "none";
@@ -317,12 +354,13 @@ async function loadAuthorModels(idx, author, container) {
       likes: m.likes || 0,
       created_at: m.createdAt || "",
       updated_at: m.lastModified || "",
-      tags: m.tags || []
+      tags: m.tags || [],
+      paramB: getParamCount(m)
     }));
 
     cache[author] = baseModels;
 
-    const dated = baseModels.filter(m => isInDateRange(m.created_at));
+    const dated = baseModels.filter(m => isInDateRange(m.created_at) && isInParamRange(m.paramB));
 
     const ad = window._authorData;
     for (const a of ad) {
@@ -607,7 +645,7 @@ function refreshAllExpanded() {
       const models = cache[author];
       if (models) {
         const inner = document.getElementById(`i1-${idx}`);
-        renderL2(idx, models.filter(m => isInDateRange(m.created_at)), inner);
+        renderL2(idx, models.filter(m => isInDateRange(m.created_at) && isInParamRange(m.paramB)), inner);
       }
     }
   });
@@ -683,6 +721,47 @@ function updateDateUI() {
   fill.style.width = (right - left) + "%";
 }
 
+// ── Param slider ──
+function buildParamSlider() {
+  const from = document.getElementById("ps-from");
+  const to = document.getElementById("ps-to");
+
+  from.value = paramSliderFrom;
+  to.value = paramSliderTo;
+
+  const clamp = () => {
+    if (parseInt(from.value) > parseInt(to.value)) from.value = to.value;
+    if (parseInt(to.value) < parseInt(from.value)) to.value = from.value;
+  };
+  const read = () => { paramSliderFrom = parseInt(from.value); paramSliderTo = parseInt(to.value); };
+
+  from.addEventListener("input", () => { clamp(); read(); updateParamUI(); });
+  from.addEventListener("change", () => { clamp(); read(); onParamChange(); });
+  to.addEventListener("input", () => { clamp(); read(); updateParamUI(); });
+  to.addEventListener("change", () => { clamp(); read(); onParamChange(); });
+
+  updateParamUI();
+}
+
+function onParamChange() {
+  updateParamUI();
+  window._authorData = computeAuthorData();
+  renderMain(window._authorData);
+  updateArrows();
+}
+
+function updateParamUI() {
+  document.getElementById("ps-from-label").textContent = paramValueToLabel(paramPosToValue(paramSliderFrom));
+  document.getElementById("ps-to-label").textContent = paramValueToLabel(paramPosToValue(paramSliderTo));
+
+  const min = 0, range = 29;
+  const left = ((paramSliderFrom - min) / range) * 100;
+  const right = ((paramSliderTo - min) / range) * 100;
+  const fill = document.getElementById("ps-fill");
+  fill.style.left = left + "%";
+  fill.style.width = (right - left) + "%";
+}
+
 // ── Main Table Sort ──
 function updateArrows() {
   document.querySelectorAll("#main-table thead th").forEach(th => {
@@ -715,6 +794,7 @@ document.querySelector("#main-table").addEventListener("click", e => {
         if (seen.has(m.id)) continue;
         if (!isBase(m)) continue;
         seen.add(m.id);
+        m.paramB = getParamCount(m);
         allFetched.push(m);
       }
     } catch (e) {
@@ -728,6 +808,7 @@ document.querySelector("#main-table").addEventListener("click", e => {
   updateArrows();
   buildFilterBar();
   buildDateSlider();
+  buildParamSlider();
   window._authorData = computeAuthorData();
   renderMain(window._authorData);
   status.textContent = "Done.";
