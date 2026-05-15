@@ -643,7 +643,7 @@ function renderL4(l2Idx, modelIdx, gIdx, quants, container) {
 
   sorted.forEach(q => {
     html += `<tr class="l4-row">
-      <td><a href="https://huggingface.co/${q.id}" target="_blank">${truncate(q.id, 38)}</a></td>
+      <td><a href="https://huggingface.co/${q.id}" target="_blank">${truncate(q.id.split("/").slice(1).join("/"), 64)}</a></td>
       <td><span class="badge ${q.q_method === 'derivative' ? 'deriv' : ''}">${q.q_method}</span></td>
       <td class="right">${fmt(q.downloads)}</td>
       <td class="right"><span class="likes-icon">♥</span>${fmt(q.likes)}</td>
