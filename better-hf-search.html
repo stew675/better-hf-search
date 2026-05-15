@@ -402,7 +402,7 @@ function buildSpecialBar() {
     const chip = document.createElement("span");
     chip.className = "filter-chip inactive";
     chip.dataset.special = opt;
-    chip.textContent = opt.replace(/ /g, "\u00A0").toUpperCase();
+    chip.textContent = opt.replace(/ /g, "\u00A0");
     chip.addEventListener("click", () => {
       if (activeSpecialFilters.has(opt)) {
         activeSpecialFilters.delete(opt);
@@ -1045,6 +1045,7 @@ return allFetched;
   buildSpecialBar();
   buildDateSlider();
   buildParamSlider();
+  syncFilterChips();
   markDirty();
   status.textContent = "Select your filters, then click Get Results.";
   renderMain([]);
