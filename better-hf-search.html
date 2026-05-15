@@ -364,7 +364,9 @@ async function loadAuthorModels(idx, author, container) {
 
     cache[author] = baseModels;
 
-    const dated = baseModels.filter(m => isInDateRange(m.created_at) && isInParamRange(m.paramB));
+    const filterApplied = () => baseModels.filter(m => isInDateRange(m.created_at) && isInParamRange(m.paramB));
+
+    const dated = filterApplied();
 
     const ad = window._authorData;
     for (const a of ad) {
@@ -384,6 +386,25 @@ async function loadAuthorModels(idx, author, container) {
     }
 
     renderL2(idx, dated, container);
+
+    const unknownModels = baseModels.filter(m => m.paramB === null);
+    if (unknownModels.length > 0) {
+      for (let i = 0; i < unknownModels.length; i += 5) {
+        const batch = unknownModels.slice(i, i + 5);
+        await Promise.all(batch.map(async (m) => {
+          try {
+            const full = await fetchJson(`https://huggingface.co/api/models/${m.id}?full=true`);
+            const p = getParamCount(full);
+            if (p !== null) m.paramB = p;
+          } catch (e) {}
+        }));
+      }
+      const updated = filterApplied();
+      const detailRow = document.getElementById(`d1-${idx}`);
+      if (detailRow && detailRow.style.display !== "none") {
+        renderL2(idx, updated, container);
+      }
+    }
   } catch (err) {
     container.innerHTML = `<div class="detail-error">Error: ${err.message}</div>`;
   }
