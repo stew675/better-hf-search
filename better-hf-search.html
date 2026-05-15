@@ -74,7 +74,9 @@
   .ds-track-bg { left: 0; right: 0; background: #30363d; }
   .ds-track-fill { background: #58a6ff; z-index: 1; }
   .ds-track-wrap input[type=range] { position: absolute; width: 100%; top: 2px; height: 24px; margin: 0;
-    -webkit-appearance: none; appearance: none; background: transparent; pointer-events: none; z-index: 2; }
+    -webkit-appearance: none; appearance: none; background: transparent; pointer-events: none; }
+  #ds-from { z-index: 3; }
+  #ds-to { z-index: 2; }
   .ds-track-wrap input[type=range]::-webkit-slider-runnable-track { height: 6px; background: transparent; border-radius: 3px; pointer-events: none; }
   .ds-track-wrap input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%;
     background: #58a6ff; cursor: pointer; pointer-events: auto; border: 2px solid #0d1117; margin-top: -6px; }
@@ -620,21 +622,21 @@ function buildDateSlider() {
   const from = document.getElementById("ds-from");
   const to = document.getElementById("ds-to");
 
-  from.addEventListener("input", () => {
+  const clamp = () => {
     if (parseInt(from.value) > parseInt(to.value)) from.value = to.value;
-    onDateChange();
-  });
-  to.addEventListener("input", () => {
     if (parseInt(to.value) < parseInt(from.value)) to.value = from.value;
-    onDateChange();
-  });
+  };
+  const read = () => { sliderFrom = parseInt(from.value); sliderTo = parseInt(to.value); };
+
+  from.addEventListener("input", () => { clamp(); read(); updateDateUI(); });
+  from.addEventListener("change", () => { clamp(); read(); onDateChange(); });
+  to.addEventListener("input", () => { clamp(); read(); updateDateUI(); });
+  to.addEventListener("change", () => { clamp(); read(); onDateChange(); });
 
   updateDateUI();
 }
 
 function onDateChange() {
-  sliderFrom = parseInt(document.getElementById("ds-from").value);
-  sliderTo = parseInt(document.getElementById("ds-to").value);
   updateDateUI();
   window._authorData = computeAuthorData();
   renderMain(window._authorData);
