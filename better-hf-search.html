@@ -686,14 +686,14 @@ function updateArrows() {
   });
 }
 
-document.querySelector("#main-table thead").addEventListener("click", e => {
-  const th = e.target.closest("th");
+document.querySelector("#main-table").addEventListener("click", e => {
+  const th = e.target.closest("#main-table > thead > tr > th");
   if (!th) return;
   const key = th.dataset.key;
   if (sortKey === key) sortAsc = !sortAsc;
   else { sortKey = key; sortAsc = false; }
-  updateArrows();
   renderMain(window._authorData);
+  updateArrows();
 });
 
 // ── Init ──
