@@ -54,17 +54,14 @@
   .cell-flex { display: flex; align-items: center; }
 
   /* Filter bar */
-  #filter-bar { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; align-items: center; }
-  #filter-bar label { display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem;
-                      padding: 3px 10px; border-radius: 14px; cursor: pointer; user-select: none;
-                      background: #161b22; border: 1px solid #30363d; transition: background 0.15s; }
-  #filter-bar .filter-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem;
+  #filter-bar, #task-filter-bar { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; align-items: center; }
+  #filter-bar .filter-chip, #task-filter-bar .filter-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem;
                        padding: 3px 10px; border-radius: 14px; cursor: pointer; user-select: none;
                        background: #161b22; border: 1px solid #30363d; transition: background 0.15s, color 0.15s, border-color 0.15s; }
-  #filter-bar .filter-chip:hover { background: #1c2129; }
-  #filter-bar .filter-chip.active { color: #58a6ff; border-color: #58a6ff; }
-  #filter-bar .filter-chip.inactive { color: #484f58; }
-  #filter-bar .filter-label { color: #8b949e; font-size: 0.78rem; margin-right: 4px; }
+  #filter-bar .filter-chip:hover, #task-filter-bar .filter-chip:hover { background: #1c2129; }
+  #filter-bar .filter-chip.active, #task-filter-bar .filter-chip.active { color: #58a6ff; border-color: #58a6ff; }
+  #filter-bar .filter-chip.inactive, #task-filter-bar .filter-chip.inactive { color: #484f58; }
+  #filter-bar .filter-label, #task-filter-bar .filter-label { color: #8b949e; font-size: 0.78rem; margin-right: 4px; }
 
   /* Range sliders */
   #date-slider, #param-slider { margin: 8px 0 6px; padding: 8px 14px 10px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; }
@@ -124,6 +121,9 @@
 <div id="filter-bar">
   <span class="filter-label">Quant types:</span>
 </div>
+<div id="task-filter-bar">
+  <span class="filter-label">Task types:</span>
+</div>
 <table id="main-table">
   <thead>
     <tr>
@@ -138,8 +138,19 @@
 <div id="count"></div>
 
 <script>
-const TASKS = ["text-generation", "image-text-to-text", "image-to-text"];
+const TASK_CATEGORIES = {
+  text: ["text-generation", "text-classification", "token-classification", "question-answering", "zero-shot-classification", "translation", "summarization", "feature-extraction", "fill-mask", "sentence-similarity"],
+  audio: ["audio-classification", "audio-to-audio", "voice-activity-detection", "text-to-audio"],
+  speech: ["text-to-speech", "automatic-speech-recognition"],
+  image: ["image-classification", "object-detection", "image-segmentation", "text-to-image", "image-to-text", "image-to-image", "unconditional-image-generation", "zero-shot-image-classification", "mask-generation", "zero-shot-object-detection", "image-feature-extraction", "image-text-to-text", "image-text-to-image"],
+  video: ["video-classification", "image-to-video", "text-to-video", "image-text-to-video", "video-text-to-text", "any-to-any", "video-to-video"],
+  "3d": ["depth-estimation", "text-to-3d", "image-to-3d", "keypoint-detection"],
+  other: ["reinforcement-learning", "robotics", "tabular-classification", "tabular-regression", "time-series-forecasting", "graph-ml", "visual-question-answering", "document-question-answering", "visual-document-retrieval", "audio-text-to-text", "table-question-answering", "text-ranking", "text-retrieval", "multiple-choice", "table-to-text", "other"]
+};
+const TASK_DISPLAY = ["text", "audio", "speech", "image", "video", "3d", "other"];
+const activeTaskFilters = new Set(["text", "image"]);
 const LIMIT = 500;
+const fetchedTasks = new Set();
 let sliderFrom = -6;
 let sliderTo = 0;
 const PARAM_VALUES = [0,1,2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100,200,300,400,500,600,700,800,900,1000,Infinity];
@@ -148,6 +159,23 @@ let paramSliderTo = 29;
 const Q_METHODS = ["awq", "gptq", "bitsandbytes", "eetq", "aqlm", "gguf", "exl2", "marlin", "mlx", "bnb", "fp4", "nf4", "int8", "int4", "q8", "q4"];
 const FILTER_DISPLAY = ["awq", "gguf", "mlx", "safetensors", "others"];
 const activeFilters = new Set(FILTER_DISPLAY);
+function resolveTasks() {
+  const tasks = [];
+  TASK_DISPLAY.forEach(cat => {
+    if (activeTaskFilters.has(cat)) tasks.push(...TASK_CATEGORIES[cat]);
+  });
+  return tasks;
+}
+function taskToCategory(tag) {
+  for (const [cat, tags] of Object.entries(TASK_CATEGORIES)) {
+    if (tags.includes(tag)) return cat;
+  }
+  return "other";
+}
+function matchesTaskFilter(pipelineTag) {
+  if (!pipelineTag) return true;
+  return activeTaskFilters.has(taskToCategory(pipelineTag));
+}
 
 async function fetchJson(url) {
   const res = await fetch(url);
@@ -223,6 +251,7 @@ function computeAuthorData() {
   all.forEach(m => {
     if (!isInDateRange(m.createdAt)) return;
     if (!isInParamRange(m.paramB)) return;
+    if (!matchesTaskFilter(m.pipeline_tag)) return;
     const author = m.id.split("/")[0];
     if (!map[author]) map[author] = { author, count: 0, totalDownloads: 0, totalLikes: 0 };
     map[author].count++;
@@ -258,6 +287,11 @@ function syncFilterChips() {
     chip.classList.toggle("active", activeFilters.has(m));
     chip.classList.toggle("inactive", !activeFilters.has(m));
   });
+  document.querySelectorAll("#task-filter-bar .filter-chip").forEach(chip => {
+    const t = chip.dataset.task;
+    chip.classList.toggle("active", activeTaskFilters.has(t));
+    chip.classList.toggle("inactive", !activeTaskFilters.has(t));
+  });
 }
 function applyFilterLogic(method) {
   const wasEnabled = activeFilters.has(method);
@@ -285,6 +319,33 @@ function buildFilterBar() {
     });
     bar.appendChild(chip);
   });
+}
+function buildTaskFilterBar() {
+  const bar = document.getElementById("task-filter-bar");
+  TASK_DISPLAY.forEach(task => {
+    const chip = document.createElement("span");
+    chip.className = "filter-chip " + (activeTaskFilters.has(task) ? "active" : "inactive");
+    chip.dataset.task = task;
+    chip.textContent = task.toUpperCase();
+    chip.addEventListener("click", () => {
+      applyTaskLogic(task);
+      syncFilterChips();
+      onTaskFilterChange();
+    });
+    bar.appendChild(chip);
+  });
+}
+function applyTaskLogic(task) {
+  const wasEnabled = activeTaskFilters.has(task);
+  const enabledCount = TASK_DISPLAY.filter(t => activeTaskFilters.has(t)).length;
+  if (!wasEnabled) {
+    activeTaskFilters.add(task);
+  } else if (enabledCount === 1) {
+    TASK_DISPLAY.forEach(t => activeTaskFilters.add(t));
+  } else {
+    TASK_DISPLAY.forEach(t => activeTaskFilters.delete(t));
+    activeTaskFilters.add(task);
+  }
 }
 
 function sortRows(rows, key, asc) {
@@ -812,32 +873,62 @@ document.querySelector("#main-table").addEventListener("click", e => {
 });
 
 // ── Init ──
-(async () => {
+async function fetchTasks(tasks) {
   const status = document.getElementById("status");
   const seen = new Set();
   const allFetched = [];
-
-  for (let i = 0; i < TASKS.length; i++) {
-    status.textContent = `Fetching ${TASKS[i]}… (${i + 1}/${TASKS.length})`;
+  for (let i = 0; i < tasks.length; i++) {
+    status.textContent = `Fetching ${tasks[i]}… (${i + 1}/${tasks.length})`;
     try {
-      const models = await fetchModels(TASKS[i]);
+      const models = await fetchModels(tasks[i]);
       for (const m of models) {
         if (seen.has(m.id)) continue;
         if (!isBase(m)) continue;
         seen.add(m.id);
         m.paramB = getParamCount(m);
+        m.pipeline_tag = tasks[i];
         allFetched.push(m);
       }
+      fetchedTasks.add(tasks[i]);
     } catch (e) {
-      status.textContent = `Error fetching ${TASKS[i]}: ${e.message}`;
+      status.textContent = `Error fetching ${tasks[i]}: ${e.message}`;
     }
   }
-
+  return allFetched;
+}
+async function onTaskFilterChange() {
+  const tasks = resolveTasks();
+  const newTasks = tasks.filter(t => !fetchedTasks.has(t));
+  let allFetched = window._allFetched || [];
+  if (newTasks.length > 0) {
+    const status = document.getElementById("status");
+    status.textContent = `Fetching new task types…`;
+    const fresh = await fetchTasks(newTasks);
+    const seen = new Set(allFetched.map(m => m.id));
+    for (const m of fresh) {
+      if (!seen.has(m.id)) {
+        seen.add(m.id);
+        allFetched.push(m);
+      }
+    }
+    window._allFetched = allFetched;
+    status.textContent = "";
+  }
+  window._authorData = computeAuthorData();
+  renderMain(window._authorData);
+  updateArrows();
+  refreshAllExpanded();
+}
+(async () => {
+  const status = document.getElementById("status");
+  const tasks = resolveTasks();
+  const allFetched = await fetchTasks(tasks);
   window._allFetched = allFetched;
   sortKey = "totalDownloads";
   sortAsc = false;
   updateArrows();
   buildFilterBar();
+  buildTaskFilterBar();
   buildDateSlider();
   buildParamSlider();
   window._authorData = computeAuthorData();
