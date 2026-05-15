@@ -332,6 +332,8 @@ function applyFilterLogic(method) {
   } else if (enabledCount === FILTER_DISPLAY.length) {
     FILTER_DISPLAY.forEach(m => activeFilters.delete(m));
     activeFilters.add(method);
+  } else if (enabledCount === 1) {
+    FILTER_DISPLAY.forEach(m => activeFilters.add(m));
   } else {
     activeFilters.delete(method);
   }
@@ -390,6 +392,8 @@ function applyBarLogic(option, options, activeSet) {
   } else if (enabledCount === options.length) {
     options.forEach(o => activeSet.delete(o));
     activeSet.add(option);
+  } else if (enabledCount === 1) {
+    options.forEach(o => activeSet.add(o));
   } else {
     activeSet.delete(option);
   }
