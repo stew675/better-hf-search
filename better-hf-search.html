@@ -283,7 +283,7 @@ function buildFilterBar() {
 function sortRows(rows, key, asc) {
   return rows.slice().sort((a, b) => {
     let va = a[key], vb = b[key];
-    if (["downloads", "likes", "totalDownloads", "totalLikes", "count"].includes(key)) { va = Number(va); vb = Number(vb); }
+    if (["downloads", "likes", "totalDownloads", "totalLikes", "count", "paramB"].includes(key)) { va = Number(va); vb = Number(vb); }
     else if (["created_at", "updated_at"].includes(key)) { va = new Date(va || 0).getTime(); vb = new Date(vb || 0).getTime(); }
     else { va = String(va || "").toLowerCase(); vb = String(vb || "").toLowerCase(); }
     if (va < vb) return asc ? -1 : 1;
@@ -392,6 +392,7 @@ function renderL2(idx, models, container) {
 
   const cols = [
     { key: "id", label: "Model ID" },
+    { key: "paramB", label: "Params", cls: "right" },
     { key: "created_at", label: "Created", cls: "right" },
     { key: "downloads", label: "Downloads", cls: "right" },
     { key: "likes", label: "Likes", cls: "right" }
@@ -406,11 +407,12 @@ function renderL2(idx, models, container) {
   sorted.forEach((m, mIdx) => {
     html += `<tr class="l2-row" data-l2-idx="${idx}" data-model-idx="${mIdx}" data-model="${m.id}">
       <td><span class="toggle" id="t2-${idx}-${mIdx}">▶</span><a href="https://huggingface.co/${m.id}" target="_blank">${truncate(m.id.split("/").slice(1).join("/"), 40)}</a></td>
+      <td class="right" style="width:60px;font-size:0.78rem">${m.paramB != null ? paramValueToLabel(m.paramB) : "—"}</td>
       <td class="right">${fmtDate(m.created_at)} <span style="color:#484f58;font-size:0.75rem">(${fmtAge(m.created_at)})</span></td>
       <td class="right">${fmt(m.downloads)}</td>
       <td class="right"><span class="likes-icon">♥</span>${fmt(m.likes)}</td>
     </tr>
-    <tr class="detail-row" id="d2-${idx}-${mIdx}" style="display:none"><td colspan="4"><div class="detail-inner" id="i2-${idx}-${mIdx}"></div></td></tr>`;
+    <tr class="detail-row" id="d2-${idx}-${mIdx}" style="display:none"><td colspan="5"><div class="detail-inner" id="i2-${idx}-${mIdx}"></div></td></tr>`;
   });
 
   html += `</tbody></table><div class="detail-count">${models.length} base model(s)</div>`;
