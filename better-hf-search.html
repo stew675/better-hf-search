@@ -196,15 +196,19 @@ function isInDateRange(createdAt) {
 }
 function getParamCount(m) {
   if (m.safetensors && m.safetensors.total) return m.safetensors.total / 1e9;
-  const match = m.id.match(/(\d+\.?\d*)[Bb]/);
-  if (match) return parseFloat(match[1]);
+  const bMatch = m.id.match(/(\d+\.?\d*)[Bb]/);
+  if (bMatch) return parseFloat(bMatch[1]);
+  const mMatch = m.id.match(/(\d+\.?\d*)[Mm]/);
+  if (mMatch) return parseFloat(mMatch[1]) / 1000;
   return null;
 }
 function paramPosToValue(pos) { return PARAM_VALUES[pos]; }
 function paramValueToLabel(val) {
   if (val === Infinity) return ">1T";
+  if (val === 0) return "0";
   if (val >= 1000) return `${val / 1000}T`;
-  return `${val}B`;
+  if (val >= 1) return `${val}B`;
+  return `${Math.round(val * 1000)}M`;
 }
 function isInParamRange(paramB) {
   if (paramB === null || paramB === undefined) return true;
