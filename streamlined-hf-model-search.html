@@ -145,15 +145,7 @@
     <span><span class="ds-l">From:</span> <span class="ds-v" id="ps-from-label">0</span></span>
     <span><span class="ds-l">To:</span> <span class="ds-v" id="ps-to-label">&gt;1T</span></span>
   </div>
-  <div class="ps-legend">
-    <div class="ps-legend-tick" style="left:0%"><span class="ps-legend-label">0</span></div>
-    <div class="ps-legend-tick" style="left:2.5%"><span class="ps-legend-label">250M</span></div>
-    <div class="ps-legend-tick" style="left:5%"><span class="ps-legend-label">500M</span></div>
-    <div class="ps-legend-tick" style="left:8.8%"><span class="ps-legend-label">1B</span></div>
-    <div class="ps-legend-tick" style="left:42.4%"><span class="ps-legend-label">10B</span></div>
-    <div class="ps-legend-tick" style="left:71.2%"><span class="ps-legend-label">100B</span></div>
-    <div class="ps-legend-tick" style="left:100%"><span class="ps-legend-label">&gt;1T</span></div>
-  </div>
+  <div class="ps-legend" id="ps-legend"></div>
 </div>
 <div id="task-bars">
 <div id="from-bar">
@@ -384,6 +376,11 @@ function paramPosToValue(pos) {
   if (pos <= 10) return pos * 0.05;
   const t = (pos - 10) / (PARAM_SLIDER_MAX - 10);
   return 0.5 * Math.pow(2000, t);
+}
+function valueToPos(val) {
+  if (val <= 0) return 0;
+  if (val <= 0.5) return val / 0.05;
+  return 10 + (Math.log(val / 0.5) / Math.log(2000)) * (PARAM_SLIDER_MAX - 10);
 }
 function paramValueToLabel(val) {
   if (val === Infinity) return ">1T";
@@ -1132,6 +1129,15 @@ function updateDateUI() {
 }
 
 // ── Param slider ──
+function buildParamLegend() {
+  const legend = document.getElementById("ps-legend");
+  const ticks = [0, 0.05, 0.1, 0.25, 0.5, 1, 10, 100, 1000];
+  legend.innerHTML = ticks.map(v => {
+    const left = valueToPos(v) / PARAM_SLIDER_MAX * 100;
+    const label = paramValueToLabel(v);
+    return `<div class="ps-legend-tick" style="left:${left}%"><span class="ps-legend-label">${label}</span></div>`;
+  }).join("");
+}
 function buildParamSlider() {
   const from = document.getElementById("ps-from");
   const to = document.getElementById("ps-to");
@@ -1251,6 +1257,7 @@ return allFetched;
   buildSpecialBar();
   buildDateSlider();
   buildParamSlider();
+  buildParamLegend();
   reseedActiveTaskFilters();
   syncFilterChips();
   markDirty();
