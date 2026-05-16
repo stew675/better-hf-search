@@ -32,9 +32,9 @@ Two sliders let you filter by **date** (months ago, up to 25 months back or "Any
 ## Quantization Filter
 
 Chip bar lets you toggle quant type categories on/off:
-AWQ, FP4, FP8, GGUF, MLX, safetensors, Others.
+AWQ, FP4, FP8, Finetune, GGUF, MLX, safetensors, Others.
 
-Quant method detection checks both model name and tags for known keywords (awq, fp4, fp8, gptq, bitsandbytes, eetq, aqlm, gguf, exl2, marlin, mlx, etc.).
+Quant method detection checks both model name and tags for known keywords (awq, fp4, fp8, gptq, bitsandbytes, eetq, aqlm, gguf, exl2, marlin, mlx, etc.). Fine-tunes (cross-author models derived from a base) are labeled "finetune" with a green badge.
 
 ## Features
 

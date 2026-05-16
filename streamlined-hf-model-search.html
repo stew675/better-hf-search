@@ -275,7 +275,7 @@ const PARAM_SLIDER_MAX = 220;
 let paramSliderFrom = 30;
 let paramSliderTo = 220;
 const Q_METHODS = ["awq", "gptq", "bitsandbytes", "eetq", "aqlm", "gguf", "exl2", "marlin", "mlx", "bnb", "fp4", "fp8", "nf4", "int8", "int4", "q8", "q4"];
-const FILTER_DISPLAY = ["awq", "fp4", "fp8", "gguf", "mlx", "safetensors", "others"];
+const FILTER_DISPLAY = ["awq", "fp4", "fp8", "finetune", "gguf", "mlx", "safetensors", "others"];
 const activeFilters = new Set(FILTER_DISPLAY);
 const activeTaskFilters = new Set();
 function resolveTasks() {
@@ -353,7 +353,12 @@ async function fetchUntaggedModels() {
 function isBase(model) {
   const cd = model.cardData;
   if (!cd) return true;
-  return !cd.base_model;
+  const bm = cd.base_model;
+  if (!bm) return true;
+  const author = model.id.split("/")[0];
+  const firstBase = Array.isArray(bm) ? bm[0] : bm;
+  if (firstBase && firstBase.split("/")[0] === author) return true;
+  return false;
 }
 
 function fmt(n) { return n.toLocaleString(); }
@@ -382,7 +387,7 @@ function sliderValueToLabel(val) {
   return d.toLocaleString("en-US", { month: "short", year: "numeric" });
 }
 function isInDateRange(createdAt) {
-  if (!createdAt) return false;
+  if (!createdAt) return true;
   const c = new Date(createdAt);
   return c >= sliderValueToDate(sliderFrom) && c <= sliderValueToDate(sliderTo);
 }
@@ -475,7 +480,7 @@ function matchesFilter(qMethod) {
 }
 function qMethodToCategory(method) {
   const m = method.toLowerCase();
-  if (["awq", "gguf", "mlx", "fp4", "fp8", "safetensors"].includes(m)) return m;
+  if (["awq", "finetune", "gguf", "mlx", "fp4", "fp8", "safetensors"].includes(m)) return m;
   return "others";
 }
 
@@ -883,8 +888,11 @@ async function loadChildren(l2Idx, modelIdx, parentId, container) {
         const nameMatches = idLower.includes(modelName.toLowerCase());
 
         if (hasBaseModel || (nameMatches && isQuant)) {
+          const childAuthor = m.id.split("/")[0];
+          const parentAuthor = parentId.split("/")[0];
+          if (hasBaseModel && childAuthor === parentAuthor) continue;
           const qMethods = Q_METHODS.filter(t => idLower.includes(t) || tagsStr.includes(t));
-          let qMethod = qMethods.length ? qMethods.join(", ") : (tagsStr.includes("safetensors") ? "safetensors" : "derivative");
+          let qMethod = qMethods.length ? qMethods.join(", ") : (hasBaseModel ? "finetune" : (tagsStr.includes("safetensors") ? "safetensors" : "derivative"));
           results.push({
             id: m.id,
             author: m.id.split("/")[0],
@@ -1025,7 +1033,7 @@ function renderL4(l2Idx, modelIdx, gIdx, quants, container) {
   sorted.forEach(q => {
     html += `<tr class="l4-row">
       <td><a href="https://huggingface.co/${q.id}" target="_blank" title="${q.id.split("/").slice(1).join("/")}">${truncate(q.id.split("/").slice(1).join("/"), 64)}</a></td>
-      <td><span class="badge ${q.q_method === 'derivative' ? 'deriv' : ''}">${q.q_method}</span></td>
+      <td><span class="badge ${q.q_method === 'derivative' || q.q_method === 'finetune' ? 'deriv' : ''}">${q.q_method}</span></td>
       <td class="right">${fmt(q.downloads)}</td>
       <td class="right"><span class="likes-icon">♥</span>${fmt(q.likes)}</td>
       <td class="right">${fmtDate(q.created_at)}</td>
@@ -1187,7 +1195,7 @@ function updateDateUI() {
 function buildParamLegend() {
   const input = document.getElementById("ps-from");
   const legend = document.getElementById("ps-legend");
-  const ticks = [0, 0.25, 0.5, 1, 5, 10, 50, 100, 500, 1000];
+  const ticks = [0, 0.5, 1, 4, 10, 40, 100, 400, 1000];
   legend.innerHTML = ticks.map(v => {
     const left = sliderCenterPct(input, valueToPos(v));
     return `<div class="ps-legend-tick" style="left:${left}%"><span class="ps-legend-label">${paramValueToLabel(v)}</span></div>`;

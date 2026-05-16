@@ -17,8 +17,8 @@ AGENTS.md                — This file
 ### Data Flow
 1. **Init**: Wait for user to click "Get Results". Compute active pipeline tasks from From/To filter bars → fetch top 500 models per pipeline task → deduplicate → filter by base-model status → store all in `window._allFetched`.
 2. **Render**: `computeAuthorData()` applies date + param slider ranges and From/To/Special/Quant filters to `_allFetched` → groups by author → renders L1.
-3. **L1 expand**: Fetch full author model list (1000) → filter base models → cache full list → apply date + param slider filters → render L2 → deepen unknown `paramB` in batches of 5 via individual model API (only for models that pass the date/param filters).
-4. **L2 expand**: Search HF API for children by parent ID and model name → match on `cardData.base_model` or quant tags.
+3. **L1 expand**: Fetch full author model list (1000) → filter base models (including same-author fine-tunes) → cache full list → apply date + param slider filters → render L2 → deepen unknown `paramB` in batches of 5 via individual model API (only for models that pass the date/param filters).
+4. **L2 expand**: Search HF API for children by parent ID and model name → match on `cardData.base_model` or quant tags. Same-author fine-tunes are excluded (already shown at L2). Cross-author fine-tunes are labeled "finetune".
 5. **L3/L4**: Group children by quant author, apply active quant filters, render sortable table.
 
 ### State Management
@@ -29,7 +29,7 @@ AGENTS.md                — This file
   - `"{author}_models"` → raw API response for author
   - `"children-{parentId}"` → L3/L4 children array
 - `detailSort` — Per-section sort state keyed by `"l2-{idx}"`, `"l3-{l2}-{model}"`, `"l4-{l2}-{model}-{g}"`
-- `activeFilters` — Set of enabled quant type strings (awq, fp4, fp8, gguf, mlx, safetensors, others)
+- `activeFilters` — Set of enabled quant type strings (awq, fp4, fp8, finetune, gguf, mlx, safetensors, others)
 - `activeFromFilters` / `activeToFilters` — Sets controlling which pipeline tags resolve
 - `activeSpecialFilters` — Set for special toggles (include untagged)
 - `sliderFrom` / `sliderTo` — Date slider positions (-25..0, months relative to now)
@@ -49,7 +49,8 @@ AGENTS.md                — This file
 | `refreshAllExpanded()` | Re-renders all open sections (filter/slider changes) |
 | `matchesFilter(qMethod)` | Checks if a quant method passes active filters |
 | `computeAuthorData()` | Applies date/param/From/To/Special/Quant filters to `_allFetched`, groups by author |
-| `isInDateRange(createdAt)` | Date slider range check |
+| `isBase(model)` | Checks if a model is a base model (no `cardData.base_model`, or same-author fine-tune) |
+| `isInDateRange(createdAt)` | Date slider range check (null dates pass through) |
 | `isInParamRange(paramB)` | Param slider range check |
 | `getParamCount(model)` | Extracts param count from `safetensors.total` or B/M suffix in model ID |
 | `paramValueToLabel(val)` | Formats param count for display (int ≥5B, 1 decimal ≥1B, int M <1B) |
@@ -68,7 +69,7 @@ AGENTS.md                — This file
 - `LIMIT` — Models fetched per task (500)
 - `PARAM_VALUES` — 220 positions, 7 segments: 25M steps to 1B, then 100M/200M/1B/2B/10B/20B steps to 1T
 - `Q_METHODS` — All quantization keywords for detection (includes fp4, fp8)
-- `FILTER_DISPLAY` — Subset shown in filter bar (awq, fp4, fp8, gguf, mlx, safetensors, others)
+- `FILTER_DISPLAY` — Subset shown in filter bar (awq, fp4, fp8, finetune, gguf, mlx, safetensors, others)
 - `RATE_LIMIT` — Max API calls per second (10)
 - `RATE_WINDOW` — Rate limit window in ms (1000)
 
@@ -90,7 +91,7 @@ Open `streamlined-hf-model-search.html` in a browser. Validate:
 3. Clicking an author expands to L2 with matching count
 4. Clicking a base model expands to L3 (quant author groups)
 5. Clicking a quant author expands to L4 (individual models)
-6. Quant filter chips (AWQ, FP4, FP8, GGUF, MLX, SAFETENSORS, OTHERS) update all expanded sections
+6. Quant filter chips (AWQ, FP4, FP8, FINETUNE, GGUF, MLX, SAFETENSORS, OTHERS) update all expanded sections
 7. Column headers toggle sort direction
 8. Links open model pages in new tabs
 9. Date slider changes re-render L1 and all open L2 sections
@@ -111,3 +112,4 @@ Open `streamlined-hf-model-search.html` in a browser. Validate:
 - **Search endpoint limitations**: The search API (`/api/models?search=...`) never returns `safetensors` or `config` data even with `full=true`. The individual model API (`/api/models/{id}?full=true`) does, which is why deepening is needed for models without B/M in their name.
 - **Rate limiting**: `fetchJson` uses a sliding-window rate limiter (10 calls/sec). Failed retries do not count toward the API call counter; only successes and permanent failures increment.
 - **Detached event target**: Sort handlers capture `const inner = e.target.closest(".detail-inner")` in a variable before any `innerHTML` replacement (which detaches the event target, making `closest()` return null). Combined with `data-level` attribute on `<th>`, both toggle and sort paths are correctly guarded even after DOM detachment.
+- **Same-author fine-tunes**: `isBase()` treats same-author fine-tunes as base models (e.g., `Qwen/Qwen3.5-9B` is a fine-tune of `Qwen/Qwen3.5-9B-Base` but both author = "Qwen", so both appear at L2). `loadChildren()` skips same-author fine-tunes at L3 (already at L2) and labels cross-author fine-tunes as "finetune".
