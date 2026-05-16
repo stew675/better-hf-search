@@ -69,7 +69,10 @@
   #activated-types { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; align-items: center; }
   #activated-types .filter-label { color: #8b949e; font-size: 0.78rem; margin-right: 4px; }
   #activated-types .act-tag { display: inline-block; font-size: 0.72rem; padding: 2px 8px; border-radius: 10px;
-    background: #1f6feb22; color: #58a6ff; border: 1px solid #1f6feb44; }
+    cursor: pointer; user-select: none; background: #161b22; border: 1px solid #30363d;
+    transition: background 0.15s, color 0.15s, border-color 0.15s; color: #484f58; }
+  #activated-types .act-tag:hover { background: #1c2129; }
+  #activated-types .act-tag.active { color: #58a6ff; border-color: #58a6ff; background: #1f6feb22; }
   #get-results-btn { display: inline-flex; align-items: center; justify-content: center; padding: 6px 20px;
     font-size: 0.82rem; font-weight: 600; border-radius: 14px; cursor: pointer; user-select: none;
     background: #21262d; color: #484f58; border: 1px solid #30363d; transition: background 0.15s, color 0.15s, border-color 0.15s;
@@ -169,55 +172,55 @@
 <script>
 const TO_TAGS = [
   // Audio
-  { tag: "automatic-speech-recognition", from: ["audio"], to: "text" },
-  { tag: "audio-classification", from: ["audio"], to: "text" },
-  { tag: "voice-activity-detection", from: ["audio"], to: "audio" },
-  { tag: "audio-to-audio", from: ["audio"], to: "audio" },
-  { tag: "audio-text-to-text", from: ["audio", "text"], to: "text" },
+  { tag: "automatic-speech-recognition", from: ["audio"], to: "text", desc: "Transcribe speech to text" },
+  { tag: "audio-classification", from: ["audio"], to: "text", desc: "Classify audio by sound type" },
+  { tag: "voice-activity-detection", from: ["audio"], to: "audio", desc: "Detect when speech is present" },
+  { tag: "audio-to-audio", from: ["audio"], to: "audio", desc: "Transform input audio to output audio" },
+  { tag: "audio-text-to-text", from: ["audio", "text"], to: "text", desc: "Generate text from speech + text prompt" },
   // Text → *
-  { tag: "text-to-speech", from: ["text"], to: "speech" },
-  { tag: "text-to-audio", from: ["text"], to: "audio" },
-  { tag: "text-to-image", from: ["text"], to: "image" },
-  { tag: "text-to-video", from: ["text"], to: "video" },
-  { tag: "text-to-3d", from: ["text"], to: "3d" },
-  { tag: "text-generation", from: ["text"], to: "text" },
-  { tag: "text-classification", from: ["text"], to: "text" },
-  { tag: "token-classification", from: ["text"], to: "text" },
-  { tag: "question-answering", from: ["text"], to: "text" },
-  { tag: "zero-shot-classification", from: ["text"], to: "text" },
-  { tag: "translation", from: ["text"], to: "text" },
-  { tag: "summarization", from: ["text"], to: "text" },
-  { tag: "fill-mask", from: ["text"], to: "text" },
-  { tag: "sentence-similarity", from: ["text"], to: "text" },
-  { tag: "feature-extraction", from: ["text"], to: "text" },
-  { tag: "text-ranking", from: ["text"], to: "text" },
-  { tag: "unconditional-image-generation", from: ["text"], to: "image" },
+  { tag: "text-to-speech", from: ["text"], to: "speech", desc: "Generate spoken audio from text" },
+  { tag: "text-to-audio", from: ["text"], to: "audio", desc: "Generate audio from text description" },
+  { tag: "text-to-image", from: ["text"], to: "image", desc: "Generate image from text prompt" },
+  { tag: "text-to-video", from: ["text"], to: "video", desc: "Generate video from text prompt" },
+  { tag: "text-to-3d", from: ["text"], to: "3d", desc: "Generate 3D assets from text" },
+  { tag: "text-generation", from: ["text"], to: "text", desc: "Generate continuing text from a prompt" },
+  { tag: "text-classification", from: ["text"], to: "text", desc: "Assign label/class to input text" },
+  { tag: "token-classification", from: ["text"], to: "text", desc: "Label individual tokens (NER, POS)" },
+  { tag: "question-answering", from: ["text"], to: "text", desc: "Answer a question given a context passage" },
+  { tag: "zero-shot-classification", from: ["text"], to: "text", desc: "Classify text into arbitrary labels" },
+  { tag: "translation", from: ["text"], to: "text", desc: "Translate text between languages" },
+  { tag: "summarization", from: ["text"], to: "text", desc: "Condense long text into a summary" },
+  { tag: "fill-mask", from: ["text"], to: "text", desc: "Predict masked tokens in text" },
+  { tag: "sentence-similarity", from: ["text"], to: "text", desc: "Score semantic similarity of sentences" },
+  { tag: "feature-extraction", from: ["text"], to: "text", desc: "Produce embedding vectors from text" },
+  { tag: "text-ranking", from: ["text"], to: "text", desc: "Rank documents by relevance to a query" },
+  { tag: "unconditional-image-generation", from: ["text"], to: "image", desc: "Generate image without text prompt" },
   // Image → *
-  { tag: "image-to-text", from: ["image"], to: "text" },
-  { tag: "image-classification", from: ["image"], to: "text" },
-  { tag: "object-detection", from: ["image"], to: "text" },
-  { tag: "image-segmentation", from: ["image"], to: "text" },
-  { tag: "zero-shot-image-classification", from: ["image"], to: "text" },
-  { tag: "zero-shot-object-detection", from: ["image"], to: "text" },
-  { tag: "image-to-image", from: ["image"], to: "image" },
-  { tag: "depth-estimation", from: ["image"], to: "image" },
-  { tag: "mask-generation", from: ["image"], to: "image" },
-  { tag: "image-feature-extraction", from: ["image"], to: "image" },
-  { tag: "keypoint-detection", from: ["image"], to: "image" },
-  { tag: "image-to-video", from: ["image"], to: "video" },
-  { tag: "image-to-3d", from: ["image"], to: "3d" },
+  { tag: "image-to-text", from: ["image"], to: "text", desc: "Describe or caption an image" },
+  { tag: "image-classification", from: ["image"], to: "text", desc: "Assign label/class to an image" },
+  { tag: "object-detection", from: ["image"], to: "text", desc: "Detect objects with bounding boxes" },
+  { tag: "image-segmentation", from: ["image"], to: "text", desc: "Segment image into regions by object" },
+  { tag: "zero-shot-image-classification", from: ["image"], to: "text", desc: "Classify image into arbitrary labels" },
+  { tag: "zero-shot-object-detection", from: ["image"], to: "text", desc: "Detect objects by arbitrary text labels" },
+  { tag: "image-to-image", from: ["image"], to: "image", desc: "Transform an input image (style, enhance)" },
+  { tag: "depth-estimation", from: ["image"], to: "image", desc: "Predict depth map from a single image" },
+  { tag: "mask-generation", from: ["image"], to: "image", desc: "Generate segmentation mask for an image" },
+  { tag: "image-feature-extraction", from: ["image"], to: "image", desc: "Produce embedding vectors from images" },
+  { tag: "keypoint-detection", from: ["image"], to: "image", desc: "Detect key body/key-points in image" },
+  { tag: "image-to-video", from: ["image"], to: "video", desc: "Generate video from a single image" },
+  { tag: "image-to-3d", from: ["image"], to: "3d", desc: "Generate 3D assets from an image" },
   // Video → *
-  { tag: "video-classification", from: ["video"], to: "text" },
-  { tag: "video-to-video", from: ["video"], to: "video" },
-  { tag: "video-text-to-text", from: ["video", "text"], to: "text" },
+  { tag: "video-classification", from: ["video"], to: "text", desc: "Assign label/class to a video" },
+  { tag: "video-to-video", from: ["video"], to: "video", desc: "Transform an input video to output video" },
+  { tag: "video-text-to-text", from: ["video", "text"], to: "text", desc: "Generate text from video + text prompt" },
   // Multimodal
-  { tag: "image-text-to-text", from: ["image", "text"], to: "text" },
-  { tag: "visual-question-answering", from: ["image", "text"], to: "text" },
-  { tag: "document-question-answering", from: ["image", "text"], to: "text" },
-  { tag: "visual-document-retrieval", from: ["image", "text"], to: "text" },
-  { tag: "image-text-to-image", from: ["image", "text"], to: "image" },
-  { tag: "image-text-to-video", from: ["image", "text"], to: "video" },
-  { tag: "any-to-any", from: ["any"], to: "any" }
+  { tag: "image-text-to-text", from: ["image", "text"], to: "text", desc: "Generate text from image + text prompt" },
+  { tag: "visual-question-answering", from: ["image", "text"], to: "text", desc: "Answer questions about an image" },
+  { tag: "document-question-answering", from: ["image", "text"], to: "text", desc: "Answer questions from a document image" },
+  { tag: "visual-document-retrieval", from: ["image", "text"], to: "text", desc: "Retrieve documents from image queries" },
+  { tag: "image-text-to-image", from: ["image", "text"], to: "image", desc: "Generate image from image + text prompt" },
+  { tag: "image-text-to-video", from: ["image", "text"], to: "video", desc: "Generate video from image + text prompt" },
+  { tag: "any-to-any", from: ["any"], to: "any", desc: "Process any input modality to any output" }
 ];
 const FROM_OPTIONS = ["text", "image", "audio", "video", "any", "all"];
 const TO_OPTIONS = ["text", "speech", "audio", "image", "video", "3d", "any", "all"];
@@ -240,9 +243,10 @@ let paramSliderTo = 29;
 const Q_METHODS = ["awq", "gptq", "bitsandbytes", "eetq", "aqlm", "gguf", "exl2", "marlin", "mlx", "bnb", "fp4", "nf4", "int8", "int4", "q8", "q4"];
 const FILTER_DISPLAY = ["awq", "gguf", "mlx", "safetensors", "others"];
 const activeFilters = new Set(FILTER_DISPLAY);
+const activeTaskFilters = new Set();
 function resolveTasks() {
   return TO_TAGS.filter(t => {
-    const fromMatch = t.from.some(f => activeFromFilters.has(f));
+    const fromMatch = t.from.every(f => activeFromFilters.has(f));
     const toMatch = activeToFilters.has(t.to);
     return fromMatch && toMatch;
   }).map(t => t.tag);
@@ -251,7 +255,7 @@ function matchesTaskFilter(pipelineTag) {
   if (!pipelineTag) return true;
   const t = TO_TAGS.find(x => x.tag === pipelineTag);
   if (!t) return false;
-  const fromMatch = t.from.some(f => activeFromFilters.has(f));
+  const fromMatch = t.from.every(f => activeFromFilters.has(f));
   const toMatch = activeToFilters.has(t.to);
   return fromMatch && toMatch;
 }
@@ -351,6 +355,7 @@ function computeAuthorData() {
     if (!m.pipeline_tag && !activeSpecialFilters.has("include untagged")) return;
     if (!isInParamRange(m.paramB)) return;
     if (!matchesTaskFilter(m.pipeline_tag)) return;
+    if (m.pipeline_tag && !activeTaskFilters.has(m.pipeline_tag)) return;
     const author = m.id.split("/")[0];
     if (!map[author]) map[author] = { author, count: 0, totalDownloads: 0, totalLikes: 0 };
     map[author].count++;
@@ -401,19 +406,30 @@ function syncFilterChips() {
     chip.classList.toggle("active", activeSpecialFilters.has(s));
     chip.classList.toggle("inactive", !activeSpecialFilters.has(s));
   });
-  const tasks = resolveTasks();
+  const tasks = resolveTasks().sort();
   const container = document.getElementById("activated-types");
   const existing = container.querySelectorAll(".act-tag");
   existing.forEach(el => el.remove());
   tasks.forEach(tag => {
     const span = document.createElement("span");
-    span.className = "act-tag";
+    const desc = TO_TAGS.find(t => t.tag === tag)?.desc || "";
+    span.className = "act-tag" + (activeTaskFilters.has(tag) ? " active" : "");
+    span.dataset.tag = tag;
     span.textContent = tag;
+    if (desc) span.title = desc;
+    span.addEventListener("click", () => {
+      applyActTagLogic(tag);
+      container.querySelectorAll(".act-tag").forEach(el => {
+        const t = el.dataset.tag;
+        if (t) el.classList.toggle("active", activeTaskFilters.has(t));
+      });
+      markDirty();
+    });
     container.appendChild(span);
   });
   if (activeSpecialFilters.has("include untagged")) {
     const span = document.createElement("span");
-    span.className = "act-tag";
+    span.className = "act-tag active";
     span.textContent = "(untagged)";
     container.appendChild(span);
   }
@@ -430,6 +446,21 @@ function applyFilterLogic(method) {
     FILTER_DISPLAY.forEach(m => activeFilters.add(m));
   } else {
     activeFilters.delete(method);
+  }
+}
+function applyActTagLogic(tag) {
+  const tags = resolveTasks();
+  const wasEnabled = activeTaskFilters.has(tag);
+  const enabledCount = tags.filter(t => activeTaskFilters.has(t)).length;
+  if (!wasEnabled) {
+    activeTaskFilters.add(tag);
+  } else if (enabledCount === tags.length) {
+    tags.forEach(t => activeTaskFilters.delete(t));
+    activeTaskFilters.add(tag);
+  } else if (enabledCount === 1) {
+    tags.forEach(t => activeTaskFilters.add(t));
+  } else {
+    activeTaskFilters.delete(tag);
   }
 }
 function buildFilterBar() {
@@ -485,11 +516,21 @@ function buildBar(barId, options, activeSet, clickHandler) {
     bar.appendChild(chip);
   });
 }
+function reseedActiveTaskFilters() {
+  const tasks = resolveTasks();
+  const resolvedSet = new Set(tasks);
+  for (const tag of activeTaskFilters) {
+    if (!resolvedSet.has(tag)) activeTaskFilters.delete(tag);
+  }
+  tasks.forEach(t => activeTaskFilters.add(t));
+}
 function applyFromLogic(option) {
   applyBarLogic(option, FROM_OPTIONS, activeFromFilters);
+  reseedActiveTaskFilters();
 }
 function applyToLogic(option) {
   applyBarLogic(option, TO_OPTIONS, activeToFilters);
+  reseedActiveTaskFilters();
 }
 function applyBarLogic(option, options, activeSet) {
   const wasEnabled = activeSet.has(option);
@@ -962,7 +1003,7 @@ function applyFilters() {
   if (!needsUpdate) return;
   needsUpdate = false;
   document.getElementById("get-results-btn").classList.remove("ready");
-  const tasks = resolveTasks();
+  const tasks = resolveTasks().filter(t => activeTaskFilters.has(t));
   const newTasks = tasks.filter(t => !fetchedTasks.has(t));
   const needUntagged = activeSpecialFilters.has("include untagged") && !fetchedUntagged;
   if (newTasks.length > 0 || needUntagged) {
@@ -1100,6 +1141,7 @@ return allFetched;
   buildSpecialBar();
   buildDateSlider();
   buildParamSlider();
+  reseedActiveTaskFilters();
   syncFilterChips();
   markDirty();
   document.getElementById("api-counter").textContent = "API Calls: " + String(0).padStart(4);
