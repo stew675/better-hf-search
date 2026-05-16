@@ -1000,7 +1000,11 @@ function renderL3(l2Idx, modelIdx, parentId, children, container) {
 
 // ── Level 4: Individual Quantizations ──
 function renderL4(l2Idx, modelIdx, gIdx, quants, container) {
-  const sorted = sortRows(quants, detailSort[`l4-${l2Idx}-${modelIdx}-${gIdx}`] || { key: "downloads", asc: false });
+  // FIX: Define state object first
+  const st = detailSort[`l4-${l2Idx}-${modelIdx}-${gIdx}`] || { key: "downloads", asc: false };
+  
+  // FIX: Pass st.key and st.asc explicitly to sortRows
+  const sorted = sortRows(quants, st.key, st.asc);
 
   const cols = [
     { key: "id", label: "Model ID" },
@@ -1011,7 +1015,7 @@ function renderL4(l2Idx, modelIdx, gIdx, quants, container) {
     { key: "updated_at", label: "Updated", cls: "right" }
   ];
 
-  const st = detailSort[`l4-${l2Idx}-${modelIdx}-${gIdx}`] || { key: "downloads", asc: false };
+  // st is now available for the header generation loop below
   let html = `<table><thead><tr>`;
   cols.forEach(c => {
     html += `<th data-key="${c.key}" data-level="4" class="${c.cls || ''}">${c.label} <span class="arrow">${st.key === c.key ? (st.asc ? "▲" : "▼") : ""}</span></th>`;
