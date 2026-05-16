@@ -66,13 +66,13 @@
   #filter-bar .filter-chip.active, #from-bar .filter-chip.active, #to-bar .filter-chip.active, #special-bar .filter-chip.active { color: #58a6ff; border-color: #58a6ff; }
   #filter-bar .filter-chip.inactive, #from-bar .filter-chip.inactive, #to-bar .filter-chip.inactive, #special-bar .filter-chip.inactive { color: #6e7681; }
   #filter-bar .filter-label, #from-bar .filter-label, #to-bar .filter-label, #special-bar .filter-label { color: #8b949e; font-size: 0.78rem; margin-right: 4px; }
-  #activated-types { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; align-items: center; }
-  #activated-types .filter-label { color: #8b949e; font-size: 0.78rem; margin-right: 4px; }
-  #activated-types .act-tag { display: inline-block; font-size: 0.72rem; padding: 2px 8px; border-radius: 10px;
-    cursor: pointer; user-select: none; background: #161b22; border: 1px solid #30363d;
-    transition: background 0.15s, color 0.15s, border-color 0.15s; color: #484f58; }
-  #activated-types .act-tag:hover { background: #1c2129; }
-  #activated-types .act-tag.active { color: #58a6ff; border-color: #58a6ff; background: #1f6feb22; }
+  .task-bar-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; align-items: center; }
+   .task-bar-row .filter-label { color: #8b949e; font-size: 0.78rem; margin-right: 4px; }
+   .task-bar-row .act-tag { display: inline-block; font-size: 0.72rem; padding: 2px 8px; border-radius: 10px;
+     cursor: pointer; user-select: none; background: #161b22; border: 1px solid #30363d;
+     transition: background 0.15s, color 0.15s, border-color 0.15s; color: #484f58; }
+   .task-bar-row .act-tag:hover { background: #1c2129; }
+   .task-bar-row .act-tag.active { color: #58a6ff; border-color: #58a6ff; background: #1f6feb22; }
   #get-results-btn { display: inline-flex; align-items: center; justify-content: center; padding: 6px 20px;
     font-size: 0.82rem; font-weight: 600; border-radius: 14px; cursor: pointer; user-select: none;
     background: #21262d; color: #484f58; border: 1px solid #30363d; transition: background 0.15s, color 0.15s, border-color 0.15s;
@@ -158,8 +158,11 @@
   <span class="filter-label">Special:</span>
 </div>
 </div>
-<div id="activated-types">
+<div id="activated-types" class="task-bar-row">
   <span class="filter-label">Activated Types:</span>
+</div>
+<div id="available-types" class="task-bar-row">
+  <span class="filter-label">Available Types:</span>
 </div>
 <div id="filter-row">
 <div id="filter-bar">
@@ -506,50 +509,59 @@ function syncFilterChips() {
     chip.classList.toggle("inactive", !activeSpecialFilters.has(s));
   });
   const tasks = resolveTasks().sort();
-  const container = document.getElementById("activated-types");
-
-  const existingTags = container.querySelectorAll(".act-tag[data-tag]");
-  const tagMap = new Map();
-  existingTags.forEach(el => tagMap.set(el.dataset.tag, el));
-  const desired = new Set(tasks);
-
-  for (const [tag, el] of tagMap) {
-    if (!desired.has(tag)) el.remove();
-  }
-
+  const activeContainer = document.getElementById("activated-types");
+  const availContainer = document.getElementById("available-types");
+  const activeLabel = activeContainer.querySelector(".filter-label");
+  const availLabel = availContainer.querySelector(".filter-label");
+  const activeTags = [];
+  const availTags = [];
   tasks.forEach(tag => {
+    if (activeTaskFilters.has(tag)) activeTags.push(tag);
+    else availTags.push(tag);
+  });
+  const showUntagged = activeSpecialFilters.has("include untagged");
+  if (showUntagged) activeTags.push("__untagged__");
+  const buildTag = (tag) => {
     const desc = TO_TAGS.find(t => t.tag === tag)?.desc || "";
-    let el = tagMap.get(tag);
-    if (el) {
-      el.classList.toggle("active", activeTaskFilters.has(tag));
+    const el = document.createElement("span");
+    el.className = "act-tag active";
+    el.dataset.tag = tag;
+    el.textContent = tag;
+    if (desc) el.title = desc;
+    el.addEventListener("click", () => {
+      applyActTagLogic(tag);
+      syncFilterChips();
+      markDirty();
+    });
+    return el;
+  };
+  const buildAvailTag = (tag) => {
+    const desc = TO_TAGS.find(t => t.tag === tag)?.desc || "";
+    const el = document.createElement("span");
+    el.className = "act-tag";
+    el.dataset.tag = tag;
+    el.textContent = tag;
+    if (desc) el.title = desc;
+    el.addEventListener("click", () => {
+      applyActTagLogic(tag);
+      syncFilterChips();
+      markDirty();
+    });
+    return el;
+  };
+  while (activeContainer.lastChild !== activeLabel) activeContainer.removeChild(activeContainer.lastChild);
+  while (availContainer.lastChild !== availLabel) availContainer.removeChild(availContainer.lastChild);
+  activeTags.forEach(tag => {
+    if (tag === "__untagged__") {
+      const span = document.createElement("span");
+      span.className = "act-tag active";
+      span.textContent = "(untagged)";
+      activeContainer.appendChild(span);
     } else {
-      el = document.createElement("span");
-      el.className = "act-tag" + (activeTaskFilters.has(tag) ? " active" : "");
-      el.dataset.tag = tag;
-      el.textContent = tag;
-      if (desc) el.title = desc;
-      el.addEventListener("click", () => {
-        applyActTagLogic(tag);
-        document.querySelectorAll("#activated-types .act-tag[data-tag]").forEach(el2 => {
-          const t = el2.dataset.tag;
-          if (t) el2.classList.toggle("active", activeTaskFilters.has(t));
-        });
-        markDirty();
-      });
-      container.appendChild(el);
+      activeContainer.appendChild(buildTag(tag));
     }
   });
-
-  const showUntagged = activeSpecialFilters.has("include untagged");
-  const untaggedEl = container.querySelector(".act-tag.untagged");
-  if (showUntagged && !untaggedEl) {
-    const span = document.createElement("span");
-    span.className = "act-tag active untagged";
-    span.textContent = "(untagged)";
-    container.appendChild(span);
-  } else if (!showUntagged && untaggedEl) {
-    untaggedEl.remove();
-  }
+  availTags.forEach(tag => availContainer.appendChild(buildAvailTag(tag)));
 }
 function applyFilterLogic(method) {
   const wasEnabled = activeFilters.has(method);
