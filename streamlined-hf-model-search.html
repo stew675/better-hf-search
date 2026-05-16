@@ -227,6 +227,25 @@ const TO_OPTIONS = ["text", "speech", "audio", "image", "video", "3d", "any", "a
 const activeFromFilters = new Set(["text", "image"]);
 const activeToFilters = new Set(["text"]);
 const SPECIAL_DISPLAY = ["include untagged"];
+const DEFAULT_ACTIVE_TAGS = new Set([
+  "audio-to-audio",
+  "audio-text-to-text",
+  "text-to-speech",
+  "text-to-audio",
+  "text-to-image",
+  "text-to-video",
+  "text-to-3d",
+  "text-generation",
+  "image-to-text",
+  "image-to-video",
+  "image-to-3d",
+  "video-to-video",
+  "video-text-to-text",
+  "image-text-to-text",
+  "image-text-to-image",
+  "image-text-to-video",
+  "any-to-any"
+]);
 const activeSpecialFilters = new Set();
 const LIMIT = 500;
 const fetchedTasks = new Set();
@@ -522,7 +541,9 @@ function reseedActiveTaskFilters() {
   for (const tag of activeTaskFilters) {
     if (!resolvedSet.has(tag)) activeTaskFilters.delete(tag);
   }
-  tasks.forEach(t => activeTaskFilters.add(t));
+  tasks.forEach(t => {
+    if (DEFAULT_ACTIVE_TAGS.has(t)) activeTaskFilters.add(t);
+  });
 }
 function applyFromLogic(option) {
   applyBarLogic(option, FROM_OPTIONS, activeFromFilters);
