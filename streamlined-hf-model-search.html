@@ -33,7 +33,9 @@
   tr.detail-row td { padding: 0; background: #010409; }
   .detail-inner { padding: 8px 12px 12px 16px; }
   .detail-inner table { font-size: 0.8rem; }
-  .detail-inner th { font-size: 0.75rem; padding: 5px 8px; background: #161b22; }
+  .detail-inner th { font-size: 0.75rem; padding: 5px 8px; background: #161b22; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+  .detail-inner th:hover { background: #1a2030; }
+  .detail-inner th.sorted { background: #1a2030; border-bottom-color: #58a6ff; }
   .detail-inner td { padding: 4px 8px; font-size: 0.8rem; }
   .detail-loading { color: #8b949e; font-style: italic; padding: 8px 0; }
   .detail-error { color: #f85149; padding: 8px 0; }
