@@ -1238,6 +1238,7 @@ function updateArrows() {
 }
 
 document.querySelector("#main-table").addEventListener("click", e => {
+  if (e.target.closest(".detail-inner")) return;
   const th = e.target.closest("#main-table > thead > tr > th");
   if (th) {
     const key = th.dataset.key;
