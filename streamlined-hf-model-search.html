@@ -275,7 +275,7 @@ const PARAM_SLIDER_MAX = 220;
 let paramSliderFrom = 30;
 let paramSliderTo = 220;
 const Q_METHODS = ["awq", "gptq", "bitsandbytes", "eetq", "aqlm", "gguf", "exl2", "marlin", "mlx", "bnb", "fp4", "fp8", "nf4", "int8", "int4", "q8", "q4"];
-const FILTER_DISPLAY = ["awq", "gguf", "fp8", "mlx", "fp4", "safetensors", "others"];
+const FILTER_DISPLAY = ["awq", "fp4", "fp8", "gguf", "mlx", "safetensors", "others"];
 const activeFilters = new Set(FILTER_DISPLAY);
 const activeTaskFilters = new Set();
 function resolveTasks() {
