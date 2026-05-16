@@ -228,23 +228,24 @@ const activeFromFilters = new Set(["text", "image"]);
 const activeToFilters = new Set(["text"]);
 const SPECIAL_DISPLAY = ["include untagged"];
 const DEFAULT_ACTIVE_TAGS = new Set([
+  "any-to-any"
   "audio-to-audio",
   "audio-text-to-text",
-  "text-to-speech",
-  "text-to-audio",
-  "text-to-image",
-  "text-to-video",
-  "text-to-3d",
-  "text-generation",
-  "image-to-text",
-  "image-to-video",
-  "image-to-3d",
-  "video-to-video",
-  "video-text-to-text",
+  "automatic-speech-recognition",
   "image-text-to-text",
   "image-text-to-image",
   "image-text-to-video",
-  "any-to-any"
+  "image-to-text",
+  "image-to-video",
+  "image-to-3d",
+  "text-generation",
+  "text-to-audio",
+  "text-to-image",
+  "text-to-speech",
+  "text-to-video",
+  "text-to-3d",
+  "video-to-video",
+  "video-text-to-text",
 ]);
 const activeSpecialFilters = new Set();
 const LIMIT = 500;
