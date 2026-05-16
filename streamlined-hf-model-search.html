@@ -382,6 +382,10 @@ function valueToPos(val) {
   if (val <= 0.5) return val / 0.05;
   return 10 + (Math.log(val / 0.5) / Math.log(2000)) * (PARAM_SLIDER_MAX - 10);
 }
+function sliderCenterPct(input, pos) {
+  const thumbSize = 18, iw = input.clientWidth || 1, pct = pos / PARAM_SLIDER_MAX;
+  return (thumbSize / 2 + pct * (iw - thumbSize)) / iw * 100;
+}
 function paramValueToLabel(val) {
   if (val === Infinity) return ">1T";
   if (val === 0) return "0";
@@ -1130,12 +1134,12 @@ function updateDateUI() {
 
 // ── Param slider ──
 function buildParamLegend() {
+  const input = document.getElementById("ps-from");
   const legend = document.getElementById("ps-legend");
   const ticks = [0, 0.05, 0.1, 0.25, 0.5, 1, 10, 100, 1000];
   legend.innerHTML = ticks.map(v => {
-    const left = valueToPos(v) / PARAM_SLIDER_MAX * 100;
-    const label = paramValueToLabel(v);
-    return `<div class="ps-legend-tick" style="left:${left}%"><span class="ps-legend-label">${label}</span></div>`;
+    const left = sliderCenterPct(input, valueToPos(v));
+    return `<div class="ps-legend-tick" style="left:${left}%"><span class="ps-legend-label">${paramValueToLabel(v)}</span></div>`;
   }).join("");
 }
 function buildParamSlider() {
@@ -1163,12 +1167,15 @@ function buildParamSlider() {
 function updateParamUI() {
   const fromVal = paramPosToValue(paramSliderFrom);
   const toVal = paramPosToValue(paramSliderTo);
+
+  const fromInput = document.getElementById("ps-from");
+  const toInput = document.getElementById("ps-to");
+  const left = sliderCenterPct(fromInput, paramSliderFrom);
+  const right = sliderCenterPct(toInput, paramSliderTo);
+
   document.getElementById("ps-from-label").textContent = paramValueToLabel(fromVal);
   document.getElementById("ps-to-label").textContent = paramValueToLabel(toVal);
 
-  const range = PARAM_SLIDER_MAX;
-  const left = (paramSliderFrom / range) * 100;
-  const right = (paramSliderTo / range) * 100;
   const fill = document.getElementById("ps-fill");
   fill.style.left = left + "%";
   fill.style.width = (right - left) + "%";
