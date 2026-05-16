@@ -19,20 +19,14 @@ The following issues from this review have been addressed (see commit message fo
 | 13 | Truncated model IDs lack tooltips | Added `title` attribute to L2 and L4 model ID links |
 | 14 | "Get Results" button never changes label | Switches to "Refresh" after first successful fetch in `applyFilters` |
 | 15 | Inactive chip contrast | Changed `#484f58` to `#6e7681` for WCAG AA compliance |
+| 16 | `expandedSections` orphans on parent collapse | On L1/L2/L3 collapse, cascade-delete all descendant IDs from `expandedSections` |
 | 17 | Param slider non-linear stepping | Replaced 30-position stepped slider with logarithmic 200-position continuous scale; added tooltips and visual legend |
 | 18 | Empty catch blocks during deepening | Added `console.warn` with model ID and error details |
+| 19 | No API retry logic | Added exponential backoff (`1×2^n`, cap 30s, max 3 retries) for 429, 5xx, and network errors |
 
 ---
 
 ## Remaining Issues
-
-### 16. No collapse-all or expand-all for sections
-Each L1/L2/L3 row must be clicked individually to expand/collapse.
-
-### Code Quality & Maintainability
-
-### 19. No API retry logic (line 289-304)
-HF API can return 429 (rate limit) or 5xx. A simple retry with exponential backoff would improve reliability.
 
 ### 21. Hardcoded limit of 500 models per task (line 253)
 For popular tasks this misses tail models. Could show a "Limited to top 500" note.

@@ -299,6 +299,8 @@ const RATE_LIMIT = 10;
 const RATE_WINDOW = 1000;
 
 async function fetchJson(url) {
+  let retries = 0;
+  const MAX_RETRIES = 3;
   while (true) {
     const now = Date.now();
     const cutoff = now - RATE_WINDOW;
@@ -311,10 +313,32 @@ async function fetchJson(url) {
       continue;
     }
     _apiTimestamps.push(now);
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    let res;
+    try {
+      res = await fetch(url);
+    } catch (err) {
+      if (retries < MAX_RETRIES) {
+        retries++;
+        const delay = Math.min(1000 * Math.pow(2, retries - 1), 30000);
+        console.warn(`fetchJson: network error for ${url}, retry ${retries}/${MAX_RETRIES} in ${delay}ms`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      throw err;
+    }
+    if (res.ok) {
+      incApiCalls(1);
+      return res.json();
+    }
+    if ((res.status === 429 || res.status >= 500) && retries < MAX_RETRIES) {
+      retries++;
+      const delay = Math.min(1000 * Math.pow(2, retries - 1), 30000);
+      console.warn(`fetchJson: HTTP ${res.status} for ${url}, retry ${retries}/${MAX_RETRIES} in ${delay}ms`);
+      await new Promise(r => setTimeout(r, delay));
+      continue;
+    }
     incApiCalls(1);
-    return res.json();
+    throw new Error(`HTTP ${res.status}`);
   }
 }
 
@@ -808,6 +832,10 @@ function renderL2(idx, models, container) {
           detailRow.style.display = "none";
           tog.classList.remove("open");
           expandedSections.delete(detailRow.id);
+          ["d3","d4"].forEach(p => {
+            const children = [...expandedSections].filter(id => id.startsWith(`${p}-${l2Idx}-${modelIdx}-`));
+            children.forEach(id => expandedSections.delete(id));
+          });
         }
       }
     });
@@ -945,6 +973,8 @@ function renderL3(l2Idx, modelIdx, parentId, children, container) {
           detailRow.style.display = "none";
           tog.classList.remove("open");
           expandedSections.delete(detailRow.id);
+          const children = [...expandedSections].filter(id => id.startsWith(`d4-${l2Idx}-${modelIdx}-${gIdx}-`));
+          children.forEach(id => expandedSections.delete(id));
         }
       }
     });
@@ -1225,6 +1255,10 @@ document.querySelector("#main-table").addEventListener("click", e => {
       detailRow.style.display = "none";
       tog.classList.remove("open");
       expandedSections.delete(detailRow.id);
+      ["d2","d3","d4"].forEach(p => {
+        const children = [...expandedSections].filter(id => id.startsWith(`${p}-${idx}-`));
+        children.forEach(id => expandedSections.delete(id));
+      });
     }
   }
 });
