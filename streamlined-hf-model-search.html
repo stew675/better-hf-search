@@ -136,8 +136,8 @@
   <div class="ds-track-wrap">
     <div class="ds-track-bg"></div>
     <div class="ds-track-fill" id="ps-fill"></div>
-    <input type="range" id="ps-from" min="0" max="200" value="0" step="1">
-    <input type="range" id="ps-to" min="0" max="200" value="200" step="1">
+    <input type="range" id="ps-from" min="0" max="220" value="0" step="1">
+    <input type="range" id="ps-to" min="0" max="220" value="220" step="1">
     <div class="ps-tooltip" id="ps-tooltip-from" style="left:0%">0</div>
     <div class="ps-tooltip" id="ps-tooltip-to" style="left:100%">&gt;1T</div>
   </div>
@@ -271,9 +271,9 @@ function incApiCalls(n) { apiCalls += n; document.getElementById("api-counter").
 function markDirty() { needsUpdate = true; document.getElementById("get-results-btn").classList.add("ready"); }
 let sliderFrom = -6;
 let sliderTo = 0;
-const PARAM_SLIDER_MAX = 200;
+const PARAM_SLIDER_MAX = 220;
 let paramSliderFrom = 0;
-let paramSliderTo = 200;
+let paramSliderTo = 220;
 const Q_METHODS = ["awq", "gptq", "bitsandbytes", "eetq", "aqlm", "gguf", "exl2", "marlin", "mlx", "bnb", "fp4", "nf4", "int8", "int4", "q8", "q4"];
 const FILTER_DISPLAY = ["awq", "gguf", "mlx", "safetensors", "others"];
 const activeFilters = new Set(FILTER_DISPLAY);
@@ -397,14 +397,24 @@ function getParamCount(m) {
 function paramPosToValue(pos) {
   if (pos <= 0) return 0;
   if (pos >= PARAM_SLIDER_MAX) return Infinity;
-  if (pos <= 10) return pos * 0.05;
-  const t = (pos - 10) / (PARAM_SLIDER_MAX - 10);
-  return 0.5 * Math.pow(2000, t);
+  if (pos <= 40) return pos * 0.025;
+  if (pos <= 70) return 1 + (pos - 40) * 0.1;
+  if (pos <= 100) return 4 + (pos - 70) * 0.2;
+  if (pos <= 130) return 10 + (pos - 100) * 1;
+  if (pos <= 160) return 40 + (pos - 130) * 2;
+  if (pos <= 190) return 100 + (pos - 160) * 10;
+  return 400 + (pos - 190) * 20;
 }
 function valueToPos(val) {
   if (val <= 0) return 0;
-  if (val <= 0.5) return val / 0.05;
-  return 10 + (Math.log(val / 0.5) / Math.log(2000)) * (PARAM_SLIDER_MAX - 10);
+  if (val <= 1) return val / 0.025;
+  if (val <= 4) return 40 + (val - 1) / 0.1;
+  if (val <= 10) return 70 + (val - 4) / 0.2;
+  if (val <= 40) return 100 + (val - 10) / 1;
+  if (val <= 100) return 130 + (val - 40) / 2;
+  if (val <= 400) return 160 + (val - 100) / 10;
+  if (val <= 1000) return 190 + (val - 400) / 20;
+  return PARAM_SLIDER_MAX;
 }
 function sliderCenterPct(input, pos) {
   const thumbSize = 18, iw = input.clientWidth || 1, pct = pos / PARAM_SLIDER_MAX;
