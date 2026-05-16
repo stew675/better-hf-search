@@ -136,13 +136,13 @@
   <div class="ds-track-wrap">
     <div class="ds-track-bg"></div>
     <div class="ds-track-fill" id="ps-fill"></div>
-    <input type="range" id="ps-from" min="0" max="220" value="0" step="1">
+    <input type="range" id="ps-from" min="0" max="220" value="30" step="1">
     <input type="range" id="ps-to" min="0" max="220" value="220" step="1">
-    <div class="ps-tooltip" id="ps-tooltip-from" style="left:0%">0</div>
+    <div class="ps-tooltip" id="ps-tooltip-from" style="left:0%">750M</div>
     <div class="ps-tooltip" id="ps-tooltip-to" style="left:100%">&gt;1T</div>
   </div>
   <div class="ds-labels">
-    <span><span class="ds-l">From:</span> <span class="ds-v" id="ps-from-label">0</span></span>
+    <span><span class="ds-l">From:</span> <span class="ds-v" id="ps-from-label">750M</span></span>
     <span><span class="ds-l">To:</span> <span class="ds-v" id="ps-to-label">&gt;1T</span></span>
   </div>
   <div class="ps-legend" id="ps-legend"></div>
@@ -272,7 +272,7 @@ function markDirty() { needsUpdate = true; document.getElementById("get-results-
 let sliderFrom = -6;
 let sliderTo = 0;
 const PARAM_SLIDER_MAX = 220;
-let paramSliderFrom = 0;
+let paramSliderFrom = 30;
 let paramSliderTo = 220;
 const Q_METHODS = ["awq", "gptq", "bitsandbytes", "eetq", "aqlm", "gguf", "exl2", "marlin", "mlx", "bnb", "fp4", "nf4", "int8", "int4", "q8", "q4"];
 const FILTER_DISPLAY = ["awq", "gguf", "mlx", "safetensors", "others"];
