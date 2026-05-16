@@ -11,21 +11,24 @@
   #status { font-size: 0.85rem; color: #8b949e; margin-bottom: 12px; min-height: 1.2em; }
   table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
   th { background: #161b22; padding: 8px 10px; text-align: left; cursor: pointer;
-       user-select: none; border-bottom: 2px solid #30363d; position: sticky; top: 0; }
+       user-select: none; border-bottom: 2px solid #30363d; position: sticky; top: 0; transition: background 0.15s, border-color 0.15s; }
   th:hover { background: #1c2129; }
-  th .arrow { margin-left: 4px; font-size: 0.7rem; }
-  td { padding: 6px 10px; border-bottom: 1px solid #21262d; }
-  a { color: #58a6ff; text-decoration: none; }
-  a:hover { text-decoration: underline; }
+  th.sorted { background: #1c2129; border-bottom-color: #58a6ff; }
+  th .arrow { margin-left: 4px; font-size: 0.7rem; color: #58a6ff; }
+  td { padding: 6px 10px; border-bottom: 1px solid #21262d; transition: background 0.1s; }
+  tr.l1-row:nth-child(4n+1) td { background: #0d1117; }
+  tr.l1-row:nth-child(4n+2) td { background: #0f1318; }
+  a { color: #58a6ff; text-decoration: none; transition: color 0.15s; }
+  a:hover { text-decoration: underline; color: #79c0ff; }
   .right { text-align: right; }
   .task { text-align: left; white-space: nowrap; }
   #count { font-size: 0.85rem; color: #8b949e; margin-top: 8px; }
 
-  .toggle { display: inline-block; width: 16px; text-align: center; color: #8b949e; margin-right: 4px; font-size: 0.7rem; transition: transform 0.15s; flex-shrink: 0; }
-  .toggle.open { transform: rotate(90deg); }
+  .toggle { display: inline-block; width: 16px; text-align: center; color: #8b949e; margin-right: 4px; font-size: 0.7rem; transition: transform 0.15s, color 0.15s; flex-shrink: 0; }
+  .toggle.open { transform: rotate(90deg); color: #58a6ff; }
 
   tr.l1-row td { cursor: pointer; font-weight: 600; }
-  tr.l1-row:hover td { background: #161b22; }
+  tr.l1-row:hover td { background: #1a2030; }
 
   tr.detail-row td { padding: 0; background: #010409; }
   .detail-inner { padding: 8px 12px 12px 16px; }
@@ -37,19 +40,20 @@
   .detail-count { font-size: 0.75rem; color: #8b949e; margin-top: 4px; }
 
   tr.l2-row td { cursor: pointer; padding-left: 32px !important; }
-  tr.l2-row:hover td { background: #161b22; }
+  tr.l2-row:hover td { background: #1a2030; }
   tr.l2-row td:first-child { padding-left: 32px !important; }
 
   tr.l3-row td { cursor: pointer; padding-left: 48px !important; font-weight: 500; }
-  tr.l3-row:hover td { background: #1c2129; }
+  tr.l3-row:hover td { background: #1a2030; }
   tr.l3-row td:first-child { padding-left: 48px !important; }
 
   tr.l4-row td { padding-left: 64px !important; }
   tr.l4-row td:first-child { padding-left: 64px !important; }
+  tr.l4-row:nth-child(even) td { background: #080b10; }
 
   .badge { display: inline-block; font-size: 0.7rem; padding: 1px 6px; border-radius: 12px;
-           background: #1f6feb33; color: #58a6ff; border: 1px solid #1f6feb55; margin: 1px 2px; }
-  .badge.deriv { background: #23863633; color: #3fb950; border-color: #23863655; }
+           background: #1f6feb33; color: #58a6ff; border: 1px solid #1f6feb55; margin: 1px 2px; box-shadow: 0 0 4px #1f6feb22; }
+  .badge.deriv { background: #23863633; color: #3fb950; border-color: #23863655; box-shadow: 0 0 4px #23863622; }
   .likes-icon { color: #f85149; margin-right: 2px; }
   .cell-flex { display: flex; align-items: center; }
 
@@ -61,24 +65,24 @@
   #filter-bar { flex: 1 1 auto; min-width: 0; }
   #filter-bar .filter-chip, #from-bar .filter-chip, #to-bar .filter-chip, #special-bar .filter-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem;
                         padding: 3px 10px; border-radius: 14px; cursor: pointer; user-select: none;
-                        background: #161b22; border: 1px solid #30363d; transition: background 0.15s, color 0.15s, border-color 0.15s; }
-  #filter-bar .filter-chip:hover, #from-bar .filter-chip:hover, #to-bar .filter-chip:hover, #special-bar .filter-chip:hover { background: #1c2129; }
-  #filter-bar .filter-chip.active, #from-bar .filter-chip.active, #to-bar .filter-chip.active, #special-bar .filter-chip.active { color: #58a6ff; border-color: #58a6ff; }
-  #filter-bar .filter-chip.inactive, #from-bar .filter-chip.inactive, #to-bar .filter-chip.inactive, #special-bar .filter-chip.inactive { color: #8b949e; }
+                        background: #161b22; border: 1px solid #30363d; transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s; }
+  #filter-bar .filter-chip:hover, #from-bar .filter-chip:hover, #to-bar .filter-chip:hover, #special-bar .filter-chip:hover { background: #1c2129; color: #c9d1d9; }
+  #filter-bar .filter-chip.active, #from-bar .filter-chip.active, #to-bar .filter-chip.active, #special-bar .filter-chip.active { color: #58a6ff; border-color: #58a6ff; box-shadow: 0 0 6px #1f6feb33; }
+  #filter-bar .filter-chip.inactive, #from-bar .filter-chip.inactive, #to-bar .filter-chip.inactive, #special-bar .filter-chip.inactive { color: #8b949e; border-color: #21262d; }
   #filter-bar .filter-label, #from-bar .filter-label, #to-bar .filter-label, #special-bar .filter-label { color: #8b949e; font-size: 0.78rem; margin-right: 4px; }
   .task-bar-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; align-items: center; }
    .task-bar-row .filter-label { color: #8b949e; font-size: 0.78rem; margin-right: 4px; }
    .task-bar-row .act-tag { display: inline-block; font-size: 0.72rem; padding: 2px 8px; border-radius: 10px;
-      cursor: pointer; user-select: none; background: #161b22; border: 1px solid #484f58;
-      transition: background 0.15s, color 0.15s, border-color 0.15s; color: #8b949e; }
-   .task-bar-row .act-tag:hover { background: #1c2129; }
-   .task-bar-row .act-tag.active { color: #58a6ff; border-color: #58a6ff; background: #1f6feb22; }
+      cursor: pointer; user-select: none; background: #161b22; border: 1px solid #30363d;
+      transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s; color: #8b949e; }
+   .task-bar-row .act-tag:hover { background: #1c2129; color: #c9d1d9; }
+   .task-bar-row .act-tag.active { color: #58a6ff; border-color: #58a6ff; background: #1f6feb22; box-shadow: 0 0 6px #1f6feb33; }
   #get-results-btn { display: inline-flex; align-items: center; justify-content: center; padding: 6px 20px;
     font-size: 0.82rem; font-weight: 600; border-radius: 14px; cursor: pointer; user-select: none;
-    background: #21262d; color: #484f58; border: 1px solid #30363d; transition: background 0.15s, color 0.15s, border-color 0.15s;
+    background: #21262d; color: #484f58; border: 1px solid #30363d; transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
     margin-left: auto; }
-  #get-results-btn.ready { background: #238636; color: #fff; border-color: #2ea043; cursor: pointer; }
-  #get-results-btn.ready:hover { background: #2ea043; }
+  #get-results-btn.ready { background: #238636; color: #fff; border-color: #2ea043; cursor: pointer; box-shadow: 0 0 8px #23863666; }
+  #get-results-btn.ready:hover { background: #2ea043; box-shadow: 0 0 12px #2ea04388; }
 
   /* Range sliders */
   #date-slider, #param-slider { margin: 8px 0 6px; padding: 8px 14px 10px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; }
@@ -804,7 +808,7 @@ function renderL2(idx, models, container) {
 
   let html = `<table><thead><tr>`;
   cols.forEach(c => {
-    html += `<th data-key="${c.key}" data-level="2" class="${c.cls || ''}">${c.label} <span class="arrow">${state.key === c.key ? (state.asc ? "▲" : "▼") : ""}</span></th>`;
+    html += `<th data-key="${c.key}" data-level="2" class="${c.cls || ''}${state.key === c.key ? ' sorted' : ''}">${c.label} <span class="arrow">${state.key === c.key ? (state.asc ? "▲" : "▼") : ""}</span></th>`;
   });
   html += `</tr></thead><tbody>`;
 
@@ -954,7 +958,7 @@ function renderL3(l2Idx, modelIdx, parentId, children, container) {
 
   let html = `<table><thead><tr>`;
   cols.forEach(c => {
-    html += `<th data-key="${c.key}" data-level="3" class="${c.cls || ''}">${c.label} <span class="arrow">${state.key === c.key ? (state.asc ? "▲" : "▼") : ""}</span></th>`;
+    html += `<th data-key="${c.key}" data-level="3" class="${c.cls || ''}${state.key === c.key ? ' sorted' : ''}">${c.label} <span class="arrow">${state.key === c.key ? (state.asc ? "▲" : "▼") : ""}</span></th>`;
   });
   html += `</tr></thead><tbody>`;
 
@@ -1039,7 +1043,7 @@ function renderL4(l2Idx, modelIdx, gIdx, quants, container) {
   // st is now available for the header generation loop below
   let html = `<table><thead><tr>`;
   cols.forEach(c => {
-    html += `<th data-key="${c.key}" data-level="4" class="${c.cls || ''}">${c.label} <span class="arrow">${st.key === c.key ? (st.asc ? "▲" : "▼") : ""}</span></th>`;
+    html += `<th data-key="${c.key}" data-level="4" class="${c.cls || ''}${st.key === c.key ? ' sorted' : ''}">${c.label} <span class="arrow">${st.key === c.key ? (st.asc ? "▲" : "▼") : ""}</span></th>`;
   });
   html += `</tr></thead><tbody>`;
 
@@ -1262,7 +1266,9 @@ function updateParamUI() {
 function updateArrows() {
   document.querySelectorAll("#main-table thead th").forEach(th => {
     const arrow = th.querySelector(".arrow");
-    arrow.textContent = th.dataset.key === sortKey ? (sortAsc ? "▲" : "▼") : "";
+    const active = th.dataset.key === sortKey;
+    arrow.textContent = active ? (sortAsc ? "▲" : "▼") : "";
+    th.classList.toggle("sorted", active);
   });
 }
 
