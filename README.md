@@ -23,33 +23,33 @@ Three filter bars above the table control which pipeline tags are active:
 - **To** — output modality (text, speech, audio, image, video, 3d, any, all)
 - **Special** — toggles like "include untagged" (models with no pipeline tag)
 
-Active pipeline tags are displayed as blue chips. Changing filters and clicking "Get Results" fetches new models.
+Active pipeline tags are displayed as blue chips. Changing filters and clicking "Get Results" fetches new models. The button label changes to "Refresh" after the first fetch.
 
 ## Dual-Range Sliders
 
-Two sliders let you filter by **date** (months ago, up to 25 months back or "Anytime") and **parameter size** (30 positions from 0 to >1T). From slider is red, to slider is green. Changes immediately re-render L1 and all open sections.
+Two sliders let you filter by **date** (months ago, up to 25 months back or "Anytime") and **parameter size** (220 positions with piecewise linear mapping across 7 zoom segments, live tooltips on drag). Changes immediately re-render L1 and all open sections (debounced at 200ms).
 
 ## Quantization Filter
 
 Chip bar lets you toggle quant type categories on/off:
-AWQ, GGUF, MLX, safetensors, Others.
+AWQ, FP4, FP8, GGUF, MLX, safetensors, Others.
 
-Quant method detection checks both model name and tags for known keywords (awq, gptq, bitsandbytes, eetq, aqlm, gguf, exl2, marlin, mlx, etc.).
+Quant method detection checks both model name and tags for known keywords (awq, fp4, fp8, gptq, bitsandbytes, eetq, aqlm, gguf, exl2, marlin, mlx, etc.).
 
 ## Features
 
 - **Zero dependencies** — single HTML file, no build step
 - **Dark theme** matching GitHub/HF styling
 - **From/To modality filter bars** for pipeline tag selection
-- **Dual-range sliders** for date and parameter size filtering
+- **Special toggles** (include untagged)
+- **Dual-range sliders** for date and parameter size filtering (piecewise linear scale, live tooltips)
 - **Column sorting** at every level (click headers)
 - **Expandable rows** — click any row (not a link) to expand
 - **Cached results** — re-expanding is instant; task fetches are skipped once complete
-- **Param deepening** — unknown param counts fetched in batches of 5 via individual model API (only for visible models)
-- **API rate limiting** — max 10 requests per second to the HuggingFace API
+- **Param deepening** — unknown param counts fetched in batches of 5 via individual model API with loading indicator (only for visible models)
+- **API rate limiting** — max 10 requests per second to the HuggingFace API with automatic retry on failure (exponential backoff, up to 3 retries)
 - **API call counter** — displays total requests made in the session
-- **Live data** — fetches directly from the HuggingFace API
-- **Quant badges** — color-coded by method
+- **Quant badges** — color-coded by method (FP4, FP8, AWQ, GGUF, MLX, etc.)
 
 ## Data Source
 
