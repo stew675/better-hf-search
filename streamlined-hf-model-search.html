@@ -809,6 +809,7 @@ function renderL2(idx, models, container) {
   if (!container._l2Delegated) {
     container._l2Delegated = true;
     container.addEventListener("click", function(e) {
+      if (e.target.closest(".detail-inner") !== this) return;
       const s = this._l2State;
       const th = e.target.closest("thead th");
       if (th) {
@@ -951,6 +952,7 @@ function renderL3(l2Idx, modelIdx, parentId, children, container) {
   if (!container._l3Delegated) {
     container._l3Delegated = true;
     container.addEventListener("click", function(e) {
+      if (e.target.closest(".detail-inner") !== this) return;
       const s = this._l3State;
       const th = e.target.closest("thead th");
       if (th) {
