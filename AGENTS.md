@@ -62,7 +62,7 @@ AGENTS.md                — This file
 
 ### Constants
 
-- `TO_TAGS` — 17 pipeline tag definitions with `from` and `to` modalities
+- `TO_TAGS` — 44 pipeline tag definitions with `from` and `to` modalities
 - `FROM_OPTIONS` — `["text", "image", "audio", "video", "any", "all"]`
 - `TO_OPTIONS` — `["text", "speech", "audio", "image", "video", "3d", "any", "all"]`
 - `LIMIT` — Models fetched per task (500)

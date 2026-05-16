@@ -168,22 +168,55 @@
 
 <script>
 const TO_TAGS = [
+  // Audio
+  { tag: "automatic-speech-recognition", from: ["audio"], to: "text" },
+  { tag: "audio-classification", from: ["audio"], to: "text" },
+  { tag: "voice-activity-detection", from: ["audio"], to: "audio" },
+  { tag: "audio-to-audio", from: ["audio"], to: "audio" },
+  { tag: "audio-text-to-text", from: ["audio", "text"], to: "text" },
+  // Text → *
   { tag: "text-to-speech", from: ["text"], to: "speech" },
   { tag: "text-to-audio", from: ["text"], to: "audio" },
   { tag: "text-to-image", from: ["text"], to: "image" },
   { tag: "text-to-video", from: ["text"], to: "video" },
   { tag: "text-to-3d", from: ["text"], to: "3d" },
+  { tag: "text-generation", from: ["text"], to: "text" },
+  { tag: "text-classification", from: ["text"], to: "text" },
+  { tag: "token-classification", from: ["text"], to: "text" },
+  { tag: "question-answering", from: ["text"], to: "text" },
+  { tag: "zero-shot-classification", from: ["text"], to: "text" },
+  { tag: "translation", from: ["text"], to: "text" },
+  { tag: "summarization", from: ["text"], to: "text" },
+  { tag: "fill-mask", from: ["text"], to: "text" },
+  { tag: "sentence-similarity", from: ["text"], to: "text" },
+  { tag: "feature-extraction", from: ["text"], to: "text" },
+  { tag: "text-ranking", from: ["text"], to: "text" },
+  { tag: "unconditional-image-generation", from: ["text"], to: "image" },
+  // Image → *
   { tag: "image-to-text", from: ["image"], to: "text" },
+  { tag: "image-classification", from: ["image"], to: "text" },
+  { tag: "object-detection", from: ["image"], to: "text" },
+  { tag: "image-segmentation", from: ["image"], to: "text" },
+  { tag: "zero-shot-image-classification", from: ["image"], to: "text" },
+  { tag: "zero-shot-object-detection", from: ["image"], to: "text" },
   { tag: "image-to-image", from: ["image"], to: "image" },
+  { tag: "depth-estimation", from: ["image"], to: "image" },
+  { tag: "mask-generation", from: ["image"], to: "image" },
+  { tag: "image-feature-extraction", from: ["image"], to: "image" },
+  { tag: "keypoint-detection", from: ["image"], to: "image" },
   { tag: "image-to-video", from: ["image"], to: "video" },
   { tag: "image-to-3d", from: ["image"], to: "3d" },
-  { tag: "audio-to-audio", from: ["audio"], to: "audio" },
-  { tag: "audio-text-to-text", from: ["audio", "text"], to: "text" },
-  { tag: "image-text-to-text", from: ["image", "text"], to: "text" },
-  { tag: "image-text-to-image", from: ["image", "text"], to: "image" },
-  { tag: "image-text-to-video", from: ["image", "text"], to: "video" },
+  // Video → *
+  { tag: "video-classification", from: ["video"], to: "text" },
   { tag: "video-to-video", from: ["video"], to: "video" },
   { tag: "video-text-to-text", from: ["video", "text"], to: "text" },
+  // Multimodal
+  { tag: "image-text-to-text", from: ["image", "text"], to: "text" },
+  { tag: "visual-question-answering", from: ["image", "text"], to: "text" },
+  { tag: "document-question-answering", from: ["image", "text"], to: "text" },
+  { tag: "visual-document-retrieval", from: ["image", "text"], to: "text" },
+  { tag: "image-text-to-image", from: ["image", "text"], to: "image" },
+  { tag: "image-text-to-video", from: ["image", "text"], to: "video" },
   { tag: "any-to-any", from: ["any"], to: "any" }
 ];
 const FROM_OPTIONS = ["text", "image", "audio", "video", "any", "all"];
