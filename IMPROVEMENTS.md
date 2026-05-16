@@ -7,9 +7,13 @@ The following issues from this review have been addressed (see commit message fo
 | # | Issue | Fix |
 |---|-------|-----|
 | 1 | Pipeline filters don't affect L2 expanded view | Stored `pipeline_tag` in L2 cache; added `modelPassesAllFilters()` helper; used in `computeAuthorData`, `loadAuthorModels`, and `refreshAllExpanded` |
+| 3 | `pipeline_tag` overwritten on dedup in `fetchTasks` | Changed to `if (!m.pipeline_tag) m.pipeline_tag = tasks[i]` so the API's original tag is preserved |
+| 4 | Nested org IDs broken in `loadChildren` | Use `parentId.split("/").slice(1).join("/")` to get the full model name portion (handles `org/suborg/model`) |
+| 5 | `_apiTimestamps` concurrent access in `fetchJson` | Replaced filter-clear-repush pattern with shift-based pruning for atomicity across `await` points |
 | 6 | `incApiCalls` overflow at > 9999 | Removed `padStart(4)` — now uses bare `String(apiCalls)` |
 | 7 | Per-row/per-th event listeners on every render | Replaced with **delegated listeners** on persistent containers (L1 on `#main-table`, L2/L3/L4 on each `.detail-inner`) |
 | 8 | `refreshAllExpanded` always scans full DOM | Added `expandedSections` Set tracked in JS; cleared on `renderMain`; used for early-exit + targeted ID lookups |
+| 9 | `syncFilterChips` recreates all `act-tag` elements | Changed to diff-based DOM update — only create, remove, or reclass as needed using a `tagMap` |
 | 10 | No slider debouncing | Added `debounce(fn, ms)` utility; applied to both date and param slider `change` handlers (200ms) |
 | 11 | No loading indicator for param deepening | Shows "Resolving parameters for {author}…" in status bar during batch fetch |
 | 18 | Empty catch blocks during deepening | Added `console.warn` with model ID and error details |
@@ -18,40 +22,7 @@ The following issues from this review have been addressed (see commit message fo
 
 ## Remaining Issues
 
-### Critical Bugs
-
-### 2. `reseedActiveTaskFilters` overrides user deselecting default tags (line 541-549)
-If a user clicks an activated-type chip to remove `text-generation` (a `DEFAULT_ACTIVE_TAGS` entry), then changes a From/To filter, `reseedActiveTaskFilters` silently re-adds it.
-
-### 3. `pipeline_tag` overwritten on dedup in `fetchTasks` (line 1148)
-```js
-m.pipeline_tag = tasks[i]; // overwrites the model's actual pipeline tag
-```
-
-If a model appears in top-500 for multiple tasks, only the **first** task's tag survives. This means `matchesTaskFilter` and `computeAuthorData` use a possibly incorrect pipeline tag for the model.
-
-### 4. Nested org IDs broken in `loadChildren` (line 782)
-```js
-const [parentAuthor, modelName] = parentId.split("/");
-```
-
-A model ID like `org/suborg/model` would lose the `model` part — `modelName` becomes `"suborg"`.
-
-### Moderate Issues
-
-### 5. `_apiTimestamps` concurrent access during back-to-back `await`s (line 289-303)
-If two `fetchJson` calls interleave at the `await` point, both can filter + clear + repush the same array, losing entries. Practically causes mild over-ratelimit rather than a crash.
-
 ### Performance
-
-### 9. `syncFilterChips` recreates all `act-tag` elements (line 433-434)
-```js
-existing.forEach(el => el.remove()); // then re-creates every tag
-```
-
-Only the diff (added/removed tags) needs DOM surgery.
-
-### UI/UX
 
 ### 12. No author search/filter
 With potentially 50+ authors, there's no way to filter the L1 table by name.

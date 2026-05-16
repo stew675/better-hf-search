@@ -289,17 +289,20 @@ const RATE_WINDOW = 1000;
 async function fetchJson(url) {
   while (true) {
     const now = Date.now();
-    const recent = _apiTimestamps.filter(t => now - t < RATE_WINDOW);
-    _apiTimestamps.length = 0;
-    _apiTimestamps.push(...recent);
-    if (recent.length < RATE_LIMIT) {
-      _apiTimestamps.push(now);
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      incApiCalls(1);
-      return res.json();
+    const cutoff = now - RATE_WINDOW;
+    while (_apiTimestamps.length > 0 && _apiTimestamps[0] < cutoff) {
+      _apiTimestamps.shift();
     }
-    await new Promise(r => setTimeout(r, RATE_WINDOW - (now - recent[0]) + 10));
+    if (_apiTimestamps.length >= RATE_LIMIT) {
+      const wait = _apiTimestamps[0] + RATE_WINDOW - now + 10;
+      await new Promise(r => setTimeout(r, wait));
+      continue;
+    }
+    _apiTimestamps.push(now);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    incApiCalls(1);
+    return res.json();
   }
 }
 
@@ -438,30 +441,48 @@ function syncFilterChips() {
   });
   const tasks = resolveTasks().sort();
   const container = document.getElementById("activated-types");
-  const existing = container.querySelectorAll(".act-tag");
-  existing.forEach(el => el.remove());
+
+  const existingTags = container.querySelectorAll(".act-tag[data-tag]");
+  const tagMap = new Map();
+  existingTags.forEach(el => tagMap.set(el.dataset.tag, el));
+  const desired = new Set(tasks);
+
+  for (const [tag, el] of tagMap) {
+    if (!desired.has(tag)) el.remove();
+  }
+
   tasks.forEach(tag => {
-    const span = document.createElement("span");
     const desc = TO_TAGS.find(t => t.tag === tag)?.desc || "";
-    span.className = "act-tag" + (activeTaskFilters.has(tag) ? " active" : "");
-    span.dataset.tag = tag;
-    span.textContent = tag;
-    if (desc) span.title = desc;
-    span.addEventListener("click", () => {
-      applyActTagLogic(tag);
-      container.querySelectorAll(".act-tag").forEach(el => {
-        const t = el.dataset.tag;
-        if (t) el.classList.toggle("active", activeTaskFilters.has(t));
+    let el = tagMap.get(tag);
+    if (el) {
+      el.classList.toggle("active", activeTaskFilters.has(tag));
+    } else {
+      el = document.createElement("span");
+      el.className = "act-tag" + (activeTaskFilters.has(tag) ? " active" : "");
+      el.dataset.tag = tag;
+      el.textContent = tag;
+      if (desc) el.title = desc;
+      el.addEventListener("click", () => {
+        applyActTagLogic(tag);
+        document.querySelectorAll("#activated-types .act-tag[data-tag]").forEach(el2 => {
+          const t = el2.dataset.tag;
+          if (t) el2.classList.toggle("active", activeTaskFilters.has(t));
+        });
+        markDirty();
       });
-      markDirty();
-    });
-    container.appendChild(span);
+      container.appendChild(el);
+    }
   });
-  if (activeSpecialFilters.has("include untagged")) {
+
+  const showUntagged = activeSpecialFilters.has("include untagged");
+  const untaggedEl = container.querySelector(".act-tag.untagged");
+  if (showUntagged && !untaggedEl) {
     const span = document.createElement("span");
-    span.className = "act-tag active";
+    span.className = "act-tag active untagged";
     span.textContent = "(untagged)";
     container.appendChild(span);
+  } else if (!showUntagged && untaggedEl) {
+    untaggedEl.remove();
   }
 }
 function applyFilterLogic(method) {
@@ -769,7 +790,7 @@ function renderL2(idx, models, container) {
 
 async function loadChildren(l2Idx, modelIdx, parentId, container) {
   try {
-    const [parentAuthor, modelName] = parentId.split("/");
+    const modelName = parentId.split("/").slice(1).join("/");
     const results = [];
     const seen = new Set();
 
@@ -1176,7 +1197,7 @@ async function fetchTasks(tasks) {
         if (!isBase(m)) continue;
         seen.add(m.id);
         m.paramB = getParamCount(m);
-        m.pipeline_tag = tasks[i];
+        if (!m.pipeline_tag) m.pipeline_tag = tasks[i];
         allFetched.push(m);
       }
       fetchedTasks.add(tasks[i]);
