@@ -787,7 +787,7 @@ function renderL2(idx, models, container) {
 
   let html = `<table><thead><tr>`;
   cols.forEach(c => {
-    html += `<th data-key="${c.key}" class="${c.cls || ''}">${c.label} <span class="arrow">${state.key === c.key ? (state.asc ? "▲" : "▼") : ""}</span></th>`;
+    html += `<th data-key="${c.key}" data-level="2" class="${c.cls || ''}">${c.label} <span class="arrow">${state.key === c.key ? (state.asc ? "▲" : "▼") : ""}</span></th>`;
   });
   html += `</tr></thead><tbody>`;
 
@@ -809,10 +809,12 @@ function renderL2(idx, models, container) {
   if (!container._l2Delegated) {
     container._l2Delegated = true;
     container.addEventListener("click", function(e) {
-      if (e.target.closest(".detail-inner") !== this) return;
+      const inner = e.target.closest(".detail-inner");
+      if (inner && inner !== this) return;
       const s = this._l2State;
       const th = e.target.closest("thead th");
       if (th) {
+        if (th.dataset.level !== "2") return;
         const key = th.dataset.key;
         const st = detailSort[`l2-${s.idx}`] || { key: "downloads", asc: false };
         if (st.key === key) st.asc = !st.asc;
@@ -931,9 +933,9 @@ function renderL3(l2Idx, modelIdx, parentId, children, container) {
 
   let html = `<table><thead><tr>`;
   cols.forEach(c => {
-    html += `<th data-key="${c.key}" class="${c.cls || ''}">${c.label} <span class="arrow">${state.key === c.key ? (state.asc ? "▲" : "▼") : ""}</span></th>`;
+    html += `<th data-key="${c.key}" data-level="3" class="${c.cls || ''}">${c.label} <span class="arrow">${state.key === c.key ? (state.asc ? "▲" : "▼") : ""}</span></th>`;
   });
-  html += `<th class="right"></th></tr></thead><tbody>`;
+  html += `</tr></thead><tbody>`;
 
   sorted.forEach((g, gIdx) => {
     html += `<tr class="l3-row" data-l3-l2="${l2Idx}" data-l3-model-idx="${modelIdx}" data-l3-parent="${parentId}" data-l3-idx="${gIdx}" data-l3-author="${g.author}">
@@ -952,10 +954,12 @@ function renderL3(l2Idx, modelIdx, parentId, children, container) {
   if (!container._l3Delegated) {
     container._l3Delegated = true;
     container.addEventListener("click", function(e) {
-      if (e.target.closest(".detail-inner") !== this) return;
+      const inner = e.target.closest(".detail-inner");
+      if (inner && inner !== this) return;
       const s = this._l3State;
       const th = e.target.closest("thead th");
       if (th) {
+        if (th.dataset.level !== "3") return;
         const key = th.dataset.key;
         if (!key) return;
         const st = detailSort[`l3-${s.l2Idx}-${s.modelIdx}`] || { key: "totalDownloads", asc: false };
@@ -1010,7 +1014,7 @@ function renderL4(l2Idx, modelIdx, gIdx, quants, container) {
   const st = detailSort[`l4-${l2Idx}-${modelIdx}-${gIdx}`] || { key: "downloads", asc: false };
   let html = `<table><thead><tr>`;
   cols.forEach(c => {
-    html += `<th data-key="${c.key}" class="${c.cls || ''}">${c.label} <span class="arrow">${st.key === c.key ? (st.asc ? "▲" : "▼") : ""}</span></th>`;
+    html += `<th data-key="${c.key}" data-level="4" class="${c.cls || ''}">${c.label} <span class="arrow">${st.key === c.key ? (st.asc ? "▲" : "▼") : ""}</span></th>`;
   });
   html += `</tr></thead><tbody>`;
 
@@ -1033,7 +1037,7 @@ function renderL4(l2Idx, modelIdx, gIdx, quants, container) {
     container._l4Delegated = true;
     container.addEventListener("click", function(e) {
       const th = e.target.closest("thead th");
-      if (!th) return;
+      if (!th || th.dataset.level !== "4") return;
       const s = this._l4State;
       const key = th.dataset.key;
       const st = detailSort[`l4-${s.l2Idx}-${s.modelIdx}-${s.gIdx}`] || { key: "downloads", asc: false };
