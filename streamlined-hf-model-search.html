@@ -147,11 +147,11 @@
   </div>
   <div class="ps-legend">
     <div class="ps-legend-tick" style="left:0%"><span class="ps-legend-label">0</span></div>
-    <div class="ps-legend-tick" style="left:16.7%"><span class="ps-legend-label">10M</span></div>
-    <div class="ps-legend-tick" style="left:33.3%"><span class="ps-legend-label">100M</span></div>
-    <div class="ps-legend-tick" style="left:50%"><span class="ps-legend-label">1B</span></div>
-    <div class="ps-legend-tick" style="left:66.7%"><span class="ps-legend-label">10B</span></div>
-    <div class="ps-legend-tick" style="left:83.3%"><span class="ps-legend-label">100B</span></div>
+    <div class="ps-legend-tick" style="left:2.5%"><span class="ps-legend-label">250M</span></div>
+    <div class="ps-legend-tick" style="left:5%"><span class="ps-legend-label">500M</span></div>
+    <div class="ps-legend-tick" style="left:8.8%"><span class="ps-legend-label">1B</span></div>
+    <div class="ps-legend-tick" style="left:42.4%"><span class="ps-legend-label">10B</span></div>
+    <div class="ps-legend-tick" style="left:71.2%"><span class="ps-legend-label">100B</span></div>
     <div class="ps-legend-tick" style="left:100%"><span class="ps-legend-label">&gt;1T</span></div>
   </div>
 </div>
@@ -381,8 +381,9 @@ function getParamCount(m) {
 function paramPosToValue(pos) {
   if (pos <= 0) return 0;
   if (pos >= PARAM_SLIDER_MAX) return Infinity;
-  const t = pos / PARAM_SLIDER_MAX;
-  return Math.exp(Math.log(0.001) + t * (Math.log(1000) - Math.log(0.001)));
+  if (pos <= 10) return pos * 0.05;
+  const t = (pos - 10) / (PARAM_SLIDER_MAX - 10);
+  return 0.5 * Math.pow(2000, t);
 }
 function paramValueToLabel(val) {
   if (val === Infinity) return ">1T";
