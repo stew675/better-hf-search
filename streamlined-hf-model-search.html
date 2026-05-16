@@ -274,8 +274,8 @@ let sliderTo = 0;
 const PARAM_SLIDER_MAX = 220;
 let paramSliderFrom = 30;
 let paramSliderTo = 220;
-const Q_METHODS = ["awq", "gptq", "bitsandbytes", "eetq", "aqlm", "gguf", "exl2", "marlin", "mlx", "bnb", "fp4", "nf4", "int8", "int4", "q8", "q4"];
-const FILTER_DISPLAY = ["awq", "gguf", "mlx", "safetensors", "others"];
+const Q_METHODS = ["awq", "gptq", "bitsandbytes", "eetq", "aqlm", "gguf", "exl2", "marlin", "mlx", "bnb", "fp4", "fp8", "nf4", "int8", "int4", "q8", "q4"];
+const FILTER_DISPLAY = ["awq", "gguf", "fp8", "mlx", "fp4", "safetensors", "others"];
 const activeFilters = new Set(FILTER_DISPLAY);
 const activeTaskFilters = new Set();
 function resolveTasks() {
@@ -475,7 +475,7 @@ function matchesFilter(qMethod) {
 }
 function qMethodToCategory(method) {
   const m = method.toLowerCase();
-  if (["awq", "gguf", "mlx", "safetensors"].includes(m)) return m;
+  if (["awq", "gguf", "mlx", "fp4", "fp8", "safetensors"].includes(m)) return m;
   return "others";
 }
 
