@@ -255,7 +255,7 @@ const fetchedTasks = new Set();
 let fetchedUntagged = false;
 let needsUpdate = false;
 let apiCalls = 0;
-function incApiCalls(n) { apiCalls += n; document.getElementById("api-counter").textContent = "API Calls: " + String(apiCalls).padStart(4); }
+function incApiCalls(n) { apiCalls += n; document.getElementById("api-counter").textContent = "API Calls: " + String(apiCalls); }
 function markDirty() { needsUpdate = true; document.getElementById("get-results-btn").classList.add("ready"); }
 let sliderFrom = -6;
 let sliderTo = 0;
@@ -327,6 +327,7 @@ function fmtAge(d) {
   return `${(days / 365).toFixed(1)}y`;
 }
 function truncate(s, max) { return s.length > max ? s.slice(0, max) + "…" : s; }
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 
 function sliderValueToDate(val) {
   if (val === -25) return new Date("2020-01-01");
@@ -369,15 +370,21 @@ function isInParamRange(paramB) {
   const toVal = paramPosToValue(paramSliderTo);
   return paramB >= fromVal && (toVal === Infinity || paramB <= toVal);
 }
+function modelPassesAllFilters(m) {
+  if (!isInDateRange(m.created_at || m.createdAt)) return false;
+  const tag = m.pipeline_tag;
+  if (!tag && !activeSpecialFilters.has("include untagged")) return false;
+  if (!isInParamRange(m.paramB)) return false;
+  if (!matchesTaskFilter(tag)) return false;
+  if (tag && !activeTaskFilters.has(tag)) return false;
+  return true;
+}
+
 function computeAuthorData() {
   const all = window._allFetched || [];
   const map = {};
   all.forEach(m => {
-    if (!isInDateRange(m.createdAt)) return;
-    if (!m.pipeline_tag && !activeSpecialFilters.has("include untagged")) return;
-    if (!isInParamRange(m.paramB)) return;
-    if (!matchesTaskFilter(m.pipeline_tag)) return;
-    if (m.pipeline_tag && !activeTaskFilters.has(m.pipeline_tag)) return;
+    if (!modelPassesAllFilters(m)) return;
     const author = m.id.split("/")[0];
     if (!map[author]) map[author] = { author, count: 0, totalDownloads: 0, totalLikes: 0 };
     map[author].count++;
@@ -392,6 +399,7 @@ let sortKey = "totalDownloads";
 let sortAsc = false;
 const detailSort = {};
 const cache = {};
+const expandedSections = new Set();
 
 function matchesFilter(qMethod) {
   if (!qMethod) return true;
@@ -591,6 +599,7 @@ function sortRows(rows, key, asc) {
 
 // ── Level 1: Authors ──
 function renderMain(authorData) {
+  expandedSections.clear();
   const tbody = document.getElementById("body");
   const sorted = sortRows(authorData, sortKey, sortAsc);
 
@@ -608,34 +617,6 @@ function renderMain(authorData) {
   tbody.innerHTML = html;
   document.getElementById("count").textContent =
     `${sorted.length} authors with base models in selected range. Click to expand.`;
-
-  tbody.querySelectorAll(".l1-row").forEach(tr => {
-    tr.addEventListener("click", handleL1Click);
-  });
-}
-
-function handleL1Click(e) {
-  if (e.target.tagName === "A") return;
-  const tr = e.currentTarget;
-  const idx = parseInt(tr.dataset.l1Idx);
-  const author = tr.dataset.author;
-  const detailRow = document.getElementById(`d1-${idx}`);
-  const inner = document.getElementById(`i1-${idx}`);
-  const tog = document.getElementById(`t1-${idx}`);
-
-  if (detailRow.style.display === "none") {
-    detailRow.style.display = "";
-    tog.classList.add("open");
-    if (!cache[author]) {
-      inner.innerHTML = '<div class="detail-loading">Fetching base models…</div>';
-      loadAuthorModels(idx, author, inner);
-    } else {
-      renderL2(idx, cache[author].filter(m => isInDateRange(m.created_at) && isInParamRange(m.paramB)), inner);
-    }
-  } else {
-    detailRow.style.display = "none";
-    tog.classList.remove("open");
-  }
 }
 
 async function loadAuthorModels(idx, author, container) {
@@ -652,12 +633,13 @@ async function loadAuthorModels(idx, author, container) {
       created_at: m.createdAt || "",
       updated_at: m.lastModified || "",
       tags: m.tags || [],
-      paramB: getParamCount(m)
+      paramB: getParamCount(m),
+      pipeline_tag: m.pipeline_tag || ""
     }));
 
     cache[author] = baseModels;
 
-    const filterApplied = () => baseModels.filter(m => isInDateRange(m.created_at) && isInParamRange(m.paramB));
+    const filterApplied = () => baseModels.filter(m => modelPassesAllFilters(m));
 
     const dated = filterApplied();
 
@@ -682,6 +664,8 @@ async function loadAuthorModels(idx, author, container) {
 
     const unknownModels = dated.filter(m => m.paramB === null);
     if (unknownModels.length > 0) {
+      const statusEl = document.getElementById("status");
+      statusEl.textContent = `Resolving parameters for ${author} (${unknownModels.length} models)…`;
       for (let i = 0; i < unknownModels.length; i += 5) {
         const batch = unknownModels.slice(i, i + 5);
         await Promise.all(batch.map(async (m) => {
@@ -689,9 +673,12 @@ async function loadAuthorModels(idx, author, container) {
             const full = await fetchJson(`https://huggingface.co/api/models/${m.id}?full=true`);
             const p = getParamCount(full);
             if (p !== null) m.paramB = p;
-          } catch (e) {}
+          } catch (e) {
+            console.warn("Failed to fetch param for", m.id, e);
+          }
         }));
       }
+      statusEl.textContent = "";
       const updated = filterApplied();
       const detailRow = document.getElementById(`d1-${idx}`);
       if (detailRow && detailRow.style.display !== "none") {
@@ -735,45 +722,48 @@ function renderL2(idx, models, container) {
 
   html += `</tbody></table><div class="detail-count">${models.length} base model(s)</div>`;
   container.innerHTML = html;
+  container._l2State = { idx, models };
 
-  container.querySelectorAll("thead th").forEach(th => {
-    th.addEventListener("click", () => {
-      const key = th.dataset.key;
-      if (state.key === key) state.asc = !state.asc;
-      else { state.key = key; state.asc = false; }
-      detailSort[`l2-${idx}`] = state;
-      renderL2(idx, models, container);
+  if (!container._l2Delegated) {
+    container._l2Delegated = true;
+    container.addEventListener("click", function(e) {
+      const s = this._l2State;
+      const th = e.target.closest("thead th");
+      if (th) {
+        const key = th.dataset.key;
+        const st = detailSort[`l2-${s.idx}`] || { key: "downloads", asc: false };
+        if (st.key === key) st.asc = !st.asc;
+        else { st.key = key; st.asc = false; }
+        detailSort[`l2-${s.idx}`] = st;
+        renderL2(s.idx, s.models, this);
+        return;
+      }
+      const tr = e.target.closest("tr.l2-row");
+      if (tr && e.target.tagName !== "A") {
+        const l2Idx = parseInt(tr.dataset.l2Idx);
+        const modelIdx = parseInt(tr.dataset.modelIdx);
+        const modelId = tr.dataset.model;
+        const detailRow = document.getElementById(`d2-${l2Idx}-${modelIdx}`);
+        const inner = document.getElementById(`i2-${l2Idx}-${modelIdx}`);
+        const tog = document.getElementById(`t2-${l2Idx}-${modelIdx}`);
+        if (detailRow.style.display === "none") {
+          detailRow.style.display = "";
+          tog.classList.add("open");
+          expandedSections.add(detailRow.id);
+          const key = `children-${modelId}`;
+          if (cache[key]) {
+            renderL3(l2Idx, modelIdx, modelId, cache[key], inner);
+          } else {
+            inner.innerHTML = '<div class="detail-loading">Fetching children/quantizations…</div>';
+            loadChildren(l2Idx, modelIdx, modelId, inner);
+          }
+        } else {
+          detailRow.style.display = "none";
+          tog.classList.remove("open");
+          expandedSections.delete(detailRow.id);
+        }
+      }
     });
-  });
-
-  container.querySelectorAll(".l2-row").forEach(tr => {
-    tr.addEventListener("click", handleL2Click);
-  });
-}
-
-function handleL2Click(e) {
-  if (e.target.tagName === "A") return;
-  const tr = e.currentTarget;
-  const l2Idx = parseInt(tr.dataset.l2Idx);
-  const modelIdx = parseInt(tr.dataset.modelIdx);
-  const modelId = tr.dataset.model;
-  const detailRow = document.getElementById(`d2-${l2Idx}-${modelIdx}`);
-  const inner = document.getElementById(`i2-${l2Idx}-${modelIdx}`);
-  const tog = document.getElementById(`t2-${l2Idx}-${modelIdx}`);
-
-  if (detailRow.style.display === "none") {
-    detailRow.style.display = "";
-    tog.classList.add("open");
-    const key = `children-${modelId}`;
-    if (cache[key]) {
-      renderL3(l2Idx, modelIdx, modelId, cache[key], inner);
-    } else {
-      inner.innerHTML = '<div class="detail-loading">Fetching children/quantizations…</div>';
-      loadChildren(l2Idx, modelIdx, modelId, inner);
-    }
-  } else {
-    detailRow.style.display = "none";
-    tog.classList.remove("open");
   }
 }
 
@@ -870,51 +860,53 @@ function renderL3(l2Idx, modelIdx, parentId, children, container) {
   html += `</tbody></table>`;
   html += `<div class="detail-count">${filtered.length} child model(s) from ${groupEntries.length} author(s)${filtered.length !== children.length ? ` (filtered from ${children.length})` : ''}</div>`;
   container.innerHTML = html;
+  container._l3State = { l2Idx, modelIdx, parentId, children };
 
-  container.querySelectorAll("thead th").forEach(th => {
-    const key = th.dataset.key;
-    if (!key) return;
-    th.addEventListener("click", () => {
-      if (state.key === key) state.asc = !state.asc;
-      else { state.key = key; state.asc = false; }
-      detailSort[`l3-${l2Idx}-${modelIdx}`] = state;
-      renderL3(l2Idx, modelIdx, parentId, children, container);
+  if (!container._l3Delegated) {
+    container._l3Delegated = true;
+    container.addEventListener("click", function(e) {
+      const s = this._l3State;
+      const th = e.target.closest("thead th");
+      if (th) {
+        const key = th.dataset.key;
+        if (!key) return;
+        const st = detailSort[`l3-${s.l2Idx}-${s.modelIdx}`] || { key: "totalDownloads", asc: false };
+        if (st.key === key) st.asc = !st.asc;
+        else { st.key = key; st.asc = false; }
+        detailSort[`l3-${s.l2Idx}-${s.modelIdx}`] = st;
+        renderL3(s.l2Idx, s.modelIdx, s.parentId, s.children, this);
+        return;
+      }
+      const tr = e.target.closest("tr.l3-row");
+      if (tr && e.target.tagName !== "A") {
+        const l2Idx = parseInt(tr.dataset.l3L2);
+        const modelIdx = parseInt(tr.dataset.l3ModelIdx);
+        const parentId = tr.dataset.l3Parent;
+        const gIdx = parseInt(tr.dataset.l3Idx);
+        const author = tr.dataset.l3Author;
+        const detailRow = document.getElementById(`d3-${l2Idx}-${modelIdx}-${gIdx}`);
+        const inner = document.getElementById(`i3-${l2Idx}-${modelIdx}-${gIdx}`);
+        const tog = document.getElementById(`t3-${l2Idx}-${modelIdx}-${gIdx}`);
+        if (detailRow.style.display === "none") {
+          detailRow.style.display = "";
+          tog.classList.add("open");
+          expandedSections.add(detailRow.id);
+          const allChildren = cache[`children-${parentId}`] || [];
+          const quants = allChildren.filter(c => c.author === author && matchesFilter(c.q_method));
+          renderL4(l2Idx, modelIdx, gIdx, quants, inner);
+        } else {
+          detailRow.style.display = "none";
+          tog.classList.remove("open");
+          expandedSections.delete(detailRow.id);
+        }
+      }
     });
-  });
-
-  container.querySelectorAll(".l3-row").forEach(tr => {
-    tr.addEventListener("click", handleL3Click);
-  });
-}
-
-function handleL3Click(e) {
-  if (e.target.tagName === "A") return;
-  const tr = e.currentTarget;
-  const l2Idx = parseInt(tr.dataset.l3L2);
-  const modelIdx = parseInt(tr.dataset.l3ModelIdx);
-  const parentId = tr.dataset.l3Parent;
-  const gIdx = parseInt(tr.dataset.l3Idx);
-  const author = tr.dataset.l3Author;
-  const detailRow = document.getElementById(`d3-${l2Idx}-${modelIdx}-${gIdx}`);
-  const inner = document.getElementById(`i3-${l2Idx}-${modelIdx}-${gIdx}`);
-  const tog = document.getElementById(`t3-${l2Idx}-${modelIdx}-${gIdx}`);
-
-  if (detailRow.style.display === "none") {
-    detailRow.style.display = "";
-    tog.classList.add("open");
-    const allChildren = cache[`children-${parentId}`] || [];
-    const quants = allChildren.filter(c => c.author === author && matchesFilter(c.q_method));
-    renderL4(l2Idx, modelIdx, gIdx, quants, inner);
-  } else {
-    detailRow.style.display = "none";
-    tog.classList.remove("open");
   }
 }
 
 // ── Level 4: Individual Quantizations ──
 function renderL4(l2Idx, modelIdx, gIdx, quants, container) {
-  const state = detailSort[`l4-${l2Idx}-${modelIdx}-${gIdx}`] || { key: "downloads", asc: false };
-  const sorted = sortRows(quants, state.key, state.asc);
+  const sorted = sortRows(quants, detailSort[`l4-${l2Idx}-${modelIdx}-${gIdx}`] || { key: "downloads", asc: false });
 
   const cols = [
     { key: "id", label: "Model ID" },
@@ -925,9 +917,10 @@ function renderL4(l2Idx, modelIdx, gIdx, quants, container) {
     { key: "updated_at", label: "Updated", cls: "right" }
   ];
 
+  const st = detailSort[`l4-${l2Idx}-${modelIdx}-${gIdx}`] || { key: "downloads", asc: false };
   let html = `<table><thead><tr>`;
   cols.forEach(c => {
-    html += `<th data-key="${c.key}" class="${c.cls || ''}">${c.label} <span class="arrow">${state.key === c.key ? (state.asc ? "▲" : "▼") : ""}</span></th>`;
+    html += `<th data-key="${c.key}" class="${c.cls || ''}">${c.label} <span class="arrow">${st.key === c.key ? (st.asc ? "▲" : "▼") : ""}</span></th>`;
   });
   html += `</tr></thead><tbody>`;
 
@@ -944,53 +937,64 @@ function renderL4(l2Idx, modelIdx, gIdx, quants, container) {
 
   html += `</tbody></table>`;
   container.innerHTML = html;
+  container._l4State = { l2Idx, modelIdx, gIdx, quants };
 
-  container.querySelectorAll("th").forEach(th => {
-    th.addEventListener("click", () => {
+  if (!container._l4Delegated) {
+    container._l4Delegated = true;
+    container.addEventListener("click", function(e) {
+      const th = e.target.closest("thead th");
+      if (!th) return;
+      const s = this._l4State;
       const key = th.dataset.key;
-      if (state.key === key) state.asc = !state.asc;
-      else { state.key = key; state.asc = false; }
-      detailSort[`l4-${l2Idx}-${modelIdx}-${gIdx}`] = state;
-      renderL4(l2Idx, modelIdx, gIdx, quants, container);
+      const st = detailSort[`l4-${s.l2Idx}-${s.modelIdx}-${s.gIdx}`] || { key: "downloads", asc: false };
+      if (st.key === key) st.asc = !st.asc;
+      else { st.key = key; st.asc = false; }
+      detailSort[`l4-${s.l2Idx}-${s.modelIdx}-${s.gIdx}`] = st;
+      renderL4(s.l2Idx, s.modelIdx, s.gIdx, s.quants, this);
     });
-  });
+  }
 }
 
 // ── Refresh all expanded sections when filter changes ──
 function refreshAllExpanded() {
-  document.querySelectorAll(".l1-row").forEach(tr => {
-    const idx = parseInt(tr.dataset.l1Idx);
-    const detailRow = document.getElementById(`d1-${idx}`);
-    if (detailRow && detailRow.style.display !== "none") {
+  if (expandedSections.size === 0) return;
+
+  for (const id of expandedSections) {
+    if (id.startsWith("d1-")) {
+      const idx = parseInt(id.slice(3));
+      const detailRow = document.getElementById(id);
+      if (!detailRow || detailRow.style.display === "none") continue;
+      const tr = detailRow.previousElementSibling;
+      if (!tr || !tr.classList.contains("l1-row")) continue;
       const author = tr.dataset.author;
       const models = cache[author];
       if (models) {
         const inner = document.getElementById(`i1-${idx}`);
-        renderL2(idx, models.filter(m => isInDateRange(m.created_at) && isInParamRange(m.paramB)), inner);
+        renderL2(idx, models.filter(m => modelPassesAllFilters(m)), inner);
       }
-    }
-  });
-
-  document.querySelectorAll(".l2-row").forEach(tr => {
-    const l2Idx = parseInt(tr.dataset.l2Idx);
-    const modelIdx = parseInt(tr.dataset.modelIdx);
-    const detailRow = document.getElementById(`d2-${l2Idx}-${modelIdx}`);
-    if (detailRow && detailRow.style.display !== "none") {
+    } else if (id.startsWith("d2-")) {
+      const parts = id.split("-");
+      const l2Idx = parseInt(parts[1]);
+      const modelIdx = parseInt(parts[2]);
+      const detailRow = document.getElementById(id);
+      if (!detailRow || detailRow.style.display === "none") continue;
+      const tr = detailRow.previousElementSibling;
+      if (!tr || !tr.classList.contains("l2-row")) continue;
       const modelId = tr.dataset.model;
       const children = cache[`children-${modelId}`];
       if (children) {
         const inner = document.getElementById(`i2-${l2Idx}-${modelIdx}`);
         renderL3(l2Idx, modelIdx, modelId, children, inner);
       }
-    }
-  });
-
-  document.querySelectorAll(".l3-row").forEach(tr => {
-    const l2Idx = parseInt(tr.dataset.l3L2);
-    const modelIdx = parseInt(tr.dataset.l3ModelIdx);
-    const gIdx = parseInt(tr.dataset.l3Idx);
-    const detailRow = document.getElementById(`d3-${l2Idx}-${modelIdx}-${gIdx}`);
-    if (detailRow && detailRow.style.display !== "none") {
+    } else if (id.startsWith("d3-")) {
+      const parts = id.split("-");
+      const l2Idx = parseInt(parts[1]);
+      const modelIdx = parseInt(parts[2]);
+      const gIdx = parseInt(parts[3]);
+      const detailRow = document.getElementById(id);
+      if (!detailRow || detailRow.style.display === "none") continue;
+      const tr = detailRow.previousElementSibling;
+      if (!tr || !tr.classList.contains("l3-row")) continue;
       const parentId = tr.dataset.l3Parent;
       const author = tr.dataset.l3Author;
       const allChildren = cache[`children-${parentId}`] || [];
@@ -998,7 +1002,7 @@ function refreshAllExpanded() {
       const inner = document.getElementById(`i3-${l2Idx}-${modelIdx}-${gIdx}`);
       renderL4(l2Idx, modelIdx, gIdx, quants, inner);
     }
-  });
+  }
 }
 
 // ── Date slider ──
@@ -1015,10 +1019,11 @@ function buildDateSlider() {
   };
   const read = () => { sliderFrom = parseInt(from.value); sliderTo = parseInt(to.value); };
 
+  const sliderMarkDirty = debounce(markDirty, 200);
   from.addEventListener("input", () => { clamp(); read(); updateDateUI(); });
-  from.addEventListener("change", () => { clamp(); read(); markDirty(); });
+  from.addEventListener("change", () => { clamp(); read(); sliderMarkDirty(); });
   to.addEventListener("input", () => { clamp(); read(); updateDateUI(); });
-  to.addEventListener("change", () => { clamp(); read(); markDirty(); });
+  to.addEventListener("change", () => { clamp(); read(); sliderMarkDirty(); });
 
   updateDateUI();
 }
@@ -1092,10 +1097,11 @@ function buildParamSlider() {
   };
   const read = () => { paramSliderFrom = parseInt(from.value); paramSliderTo = parseInt(to.value); };
 
+  const sliderMarkDirty = debounce(markDirty, 200);
   from.addEventListener("input", () => { clamp(); read(); updateParamUI(); });
-  from.addEventListener("change", () => { clamp(); read(); markDirty(); });
+  from.addEventListener("change", () => { clamp(); read(); sliderMarkDirty(); });
   to.addEventListener("input", () => { clamp(); read(); updateParamUI(); });
-  to.addEventListener("change", () => { clamp(); read(); markDirty(); });
+  to.addEventListener("change", () => { clamp(); read(); sliderMarkDirty(); });
 
   updateParamUI();
 }
@@ -1122,12 +1128,37 @@ function updateArrows() {
 
 document.querySelector("#main-table").addEventListener("click", e => {
   const th = e.target.closest("#main-table > thead > tr > th");
-  if (!th) return;
-  const key = th.dataset.key;
-  if (sortKey === key) sortAsc = !sortAsc;
-  else { sortKey = key; sortAsc = false; }
-  renderMain(window._authorData);
-  updateArrows();
+  if (th) {
+    const key = th.dataset.key;
+    if (sortKey === key) sortAsc = !sortAsc;
+    else { sortKey = key; sortAsc = false; }
+    renderMain(window._authorData);
+    updateArrows();
+    return;
+  }
+  const tr = e.target.closest("tr.l1-row");
+  if (tr && e.target.tagName !== "A") {
+    const idx = parseInt(tr.dataset.l1Idx);
+    const author = tr.dataset.author;
+    const detailRow = document.getElementById(`d1-${idx}`);
+    const inner = document.getElementById(`i1-${idx}`);
+    const tog = document.getElementById(`t1-${idx}`);
+    if (detailRow.style.display === "none") {
+      detailRow.style.display = "";
+      tog.classList.add("open");
+      expandedSections.add(detailRow.id);
+      if (!cache[author]) {
+        inner.innerHTML = '<div class="detail-loading">Fetching base models…</div>';
+        loadAuthorModels(idx, author, inner);
+      } else {
+        renderL2(idx, cache[author].filter(m => modelPassesAllFilters(m)), inner);
+      }
+    } else {
+      detailRow.style.display = "none";
+      tog.classList.remove("open");
+      expandedSections.delete(detailRow.id);
+    }
+  }
 });
 document.getElementById("get-results-btn").addEventListener("click", applyFilters);
 
@@ -1168,7 +1199,7 @@ return allFetched;
   reseedActiveTaskFilters();
   syncFilterChips();
   markDirty();
-  document.getElementById("api-counter").textContent = "API Calls: " + String(0).padStart(4);
+  document.getElementById("api-counter").textContent = "API Calls: 0";
   status.textContent = "Select your filters, then click Get Results.";
   renderMain([]);
 })();
