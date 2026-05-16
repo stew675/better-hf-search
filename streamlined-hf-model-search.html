@@ -891,6 +891,7 @@ async function loadChildren(l2Idx, modelIdx, parentId, container) {
           const childAuthor = m.id.split("/")[0];
           const parentAuthor = parentId.split("/")[0];
           if (hasBaseModel && childAuthor === parentAuthor) continue;
+          if (!hasBaseModel && childAuthor === parentAuthor) continue;
           const qMethods = Q_METHODS.filter(t => idLower.includes(t) || tagsStr.includes(t));
           let qMethod = qMethods.length ? qMethods.join(", ") : (hasBaseModel ? "finetune" : (tagsStr.includes("safetensors") ? "safetensors" : "derivative"));
           results.push({
