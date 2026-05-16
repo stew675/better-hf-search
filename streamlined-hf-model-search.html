@@ -64,7 +64,7 @@
                         background: #161b22; border: 1px solid #30363d; transition: background 0.15s, color 0.15s, border-color 0.15s; }
   #filter-bar .filter-chip:hover, #from-bar .filter-chip:hover, #to-bar .filter-chip:hover, #special-bar .filter-chip:hover { background: #1c2129; }
   #filter-bar .filter-chip.active, #from-bar .filter-chip.active, #to-bar .filter-chip.active, #special-bar .filter-chip.active { color: #58a6ff; border-color: #58a6ff; }
-  #filter-bar .filter-chip.inactive, #from-bar .filter-chip.inactive, #to-bar .filter-chip.inactive, #special-bar .filter-chip.inactive { color: #484f58; }
+  #filter-bar .filter-chip.inactive, #from-bar .filter-chip.inactive, #to-bar .filter-chip.inactive, #special-bar .filter-chip.inactive { color: #6e7681; }
   #filter-bar .filter-label, #from-bar .filter-label, #to-bar .filter-label, #special-bar .filter-label { color: #8b949e; font-size: 0.78rem; margin-right: 4px; }
   #activated-types { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; align-items: center; }
   #activated-types .filter-label { color: #8b949e; font-size: 0.78rem; margin-right: 4px; }
@@ -732,7 +732,7 @@ function renderL2(idx, models, container) {
 
   sorted.forEach((m, mIdx) => {
     html += `<tr class="l2-row" data-l2-idx="${idx}" data-model-idx="${mIdx}" data-model="${m.id}">
-      <td><span class="toggle" id="t2-${idx}-${mIdx}">▶</span><a href="https://huggingface.co/${m.id}" target="_blank">${truncate(m.id.split("/").slice(1).join("/"), 40)}</a></td>
+      <td><span class="toggle" id="t2-${idx}-${mIdx}">▶</span><a href="https://huggingface.co/${m.id}" target="_blank" title="${m.id.split("/").slice(1).join("/")}">${truncate(m.id.split("/").slice(1).join("/"), 40)}</a></td>
       <td class="right" style="width:60px;font-size:0.78rem">${m.paramB != null ? paramValueToLabel(m.paramB) : "—"}</td>
       <td class="right">${fmtDate(m.created_at)} <span style="color:#484f58;font-size:0.75rem">(${fmtAge(m.created_at)})</span></td>
       <td class="right">${fmt(m.downloads)}</td>
@@ -947,7 +947,7 @@ function renderL4(l2Idx, modelIdx, gIdx, quants, container) {
 
   sorted.forEach(q => {
     html += `<tr class="l4-row">
-      <td><a href="https://huggingface.co/${q.id}" target="_blank">${truncate(q.id.split("/").slice(1).join("/"), 64)}</a></td>
+      <td><a href="https://huggingface.co/${q.id}" target="_blank" title="${q.id.split("/").slice(1).join("/")}">${truncate(q.id.split("/").slice(1).join("/"), 64)}</a></td>
       <td><span class="badge ${q.q_method === 'derivative' ? 'deriv' : ''}">${q.q_method}</span></td>
       <td class="right">${fmt(q.downloads)}</td>
       <td class="right"><span class="likes-icon">♥</span>${fmt(q.likes)}</td>
@@ -1079,12 +1079,14 @@ function applyFilters() {
       }
       window._allFetched = all;
       status.textContent = "";
+      document.getElementById("get-results-btn").textContent = "Refresh";
       window._authorData = computeAuthorData();
       renderMain(window._authorData);
       updateArrows();
       refreshAllExpanded();
     })();
   } else {
+    document.getElementById("get-results-btn").textContent = "Refresh";
     window._authorData = computeAuthorData();
     renderMain(window._authorData);
     updateArrows();

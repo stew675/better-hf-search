@@ -16,33 +16,14 @@ The following issues from this review have been addressed (see commit message fo
 | 9 | `syncFilterChips` recreates all `act-tag` elements | Changed to diff-based DOM update — only create, remove, or reclass as needed using a `tagMap` |
 | 10 | No slider debouncing | Added `debounce(fn, ms)` utility; applied to both date and param slider `change` handlers (200ms) |
 | 11 | No loading indicator for param deepening | Shows "Resolving parameters for {author}…" in status bar during batch fetch |
+| 13 | Truncated model IDs lack tooltips | Added `title` attribute to L2 and L4 model ID links |
+| 14 | "Get Results" button never changes label | Switches to "Refresh" after first successful fetch in `applyFilters` |
+| 15 | Inactive chip contrast | Changed `#484f58` to `#6e7681` for WCAG AA compliance |
 | 18 | Empty catch blocks during deepening | Added `console.warn` with model ID and error details |
 
 ---
 
 ## Remaining Issues
-
-### Performance
-
-### 12. No author search/filter
-With potentially 50+ authors, there's no way to filter the L1 table by name.
-
-### 13. Truncated model IDs lack tooltips (line 727)
-```js
-truncate(m.id.split("/").slice(1).join("/"), 40)
-```
-
-No `title` attribute means users can't see the full model name on hover.
-
-### 14. "Get Results" button never changes label (line 158)
-After the first click, it still says "Get Results" — consider "Refresh" or show fetch progress inline.
-
-### 15. Inactive chip contrast (line 67)
-```css
-.filter-chip.inactive { color: #484f58; }
-```
-
-On `#0d1117` background, WCAG AA fails (ratio ~3.3:1). Bump to `#6e7681`.
 
 ### 16. No collapse-all or expand-all for sections
 Each L1/L2/L3 row must be clicked individually to expand/collapse.
@@ -55,9 +36,6 @@ Each L1/L2/L3 row must be clicked individually to expand/collapse.
 ### 19. No API retry logic (line 289-304)
 HF API can return 429 (rate limit) or 5xx. A simple retry with exponential backoff would improve reliability.
 
-### 20. `_allFetched` only grows, never prunes (line 1046-1054)
-Switching from `text-generation` tasks to `image-to-text` tasks still keeps the `text-generation` models in memory. A user doing many filter cycles accumulates unbounded memory.
-
 ### 21. Hardcoded limit of 500 models per task (line 253)
 For popular tasks this misses tail models. Could show a "Limited to top 500" note.
 
@@ -65,6 +43,7 @@ For popular tasks this misses tail models. Could show a "Limited to top 500" not
 
 | Area | Suggestion |
 |------|-----------|
+| UI | **Author search/filter** for L1 table (50+ authors, no way to filter) |
 | L1 table | **Virtual scrolling** for >50 authors |
 | API | **Deduplicate `fetchJson` calls** — if two callers request the same URL concurrently, merge into one inflight promise |
 | Cache | Prune `cache` entries by LRU when total exceeds a threshold (e.g. 50MB estimated) |
