@@ -104,6 +104,15 @@
   .ds-labels { display: flex; justify-content: space-between; font-size: 0.72rem; margin-top: 2px; }
   .ds-labels .ds-l { color: #8b949e; }
   .ds-labels .ds-v { color: #58a6ff; font-weight: 500; }
+  .ps-tooltip { position: absolute; top: -18px; transform: translateX(-50%); background: #1c2129;
+    color: #58a6ff; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px;
+    border: 1px solid #30363d; white-space: nowrap; pointer-events: none; z-index: 5; }
+  .ps-tooltip::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -4px;
+    border: 4px solid transparent; border-top-color: #30363d; }
+  .ps-legend { position: relative; height: 18px; margin: 0 2px; }
+  .ps-legend-tick { position: absolute; top: 0; transform: translateX(-50%); width: 1px; height: 5px; background: #484f58; }
+  .ps-legend-label { position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+    font-size: 0.62rem; color: #6e7681; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -127,12 +136,23 @@
   <div class="ds-track-wrap">
     <div class="ds-track-bg"></div>
     <div class="ds-track-fill" id="ps-fill"></div>
-    <input type="range" id="ps-from" min="0" max="29" value="0" step="1">
-    <input type="range" id="ps-to" min="0" max="29" value="29" step="1">
+    <input type="range" id="ps-from" min="0" max="200" value="0" step="1">
+    <input type="range" id="ps-to" min="0" max="200" value="200" step="1">
+    <div class="ps-tooltip" id="ps-tooltip-from" style="left:0%">0</div>
+    <div class="ps-tooltip" id="ps-tooltip-to" style="left:100%">&gt;1T</div>
   </div>
   <div class="ds-labels">
     <span><span class="ds-l">From:</span> <span class="ds-v" id="ps-from-label">0</span></span>
     <span><span class="ds-l">To:</span> <span class="ds-v" id="ps-to-label">&gt;1T</span></span>
+  </div>
+  <div class="ps-legend">
+    <div class="ps-legend-tick" style="left:0%"><span class="ps-legend-label">0</span></div>
+    <div class="ps-legend-tick" style="left:16.7%"><span class="ps-legend-label">10M</span></div>
+    <div class="ps-legend-tick" style="left:33.3%"><span class="ps-legend-label">100M</span></div>
+    <div class="ps-legend-tick" style="left:50%"><span class="ps-legend-label">1B</span></div>
+    <div class="ps-legend-tick" style="left:66.7%"><span class="ps-legend-label">10B</span></div>
+    <div class="ps-legend-tick" style="left:83.3%"><span class="ps-legend-label">100B</span></div>
+    <div class="ps-legend-tick" style="left:100%"><span class="ps-legend-label">&gt;1T</span></div>
   </div>
 </div>
 <div id="task-bars">
@@ -259,9 +279,9 @@ function incApiCalls(n) { apiCalls += n; document.getElementById("api-counter").
 function markDirty() { needsUpdate = true; document.getElementById("get-results-btn").classList.add("ready"); }
 let sliderFrom = -6;
 let sliderTo = 0;
-const PARAM_VALUES = [0,1,2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100,200,300,400,500,600,700,800,900,1000,Infinity];
+const PARAM_SLIDER_MAX = 200;
 let paramSliderFrom = 0;
-let paramSliderTo = 29;
+let paramSliderTo = 200;
 const Q_METHODS = ["awq", "gptq", "bitsandbytes", "eetq", "aqlm", "gguf", "exl2", "marlin", "mlx", "bnb", "fp4", "nf4", "int8", "int4", "q8", "q4"];
 const FILTER_DISPLAY = ["awq", "gguf", "mlx", "safetensors", "others"];
 const activeFilters = new Set(FILTER_DISPLAY);
@@ -358,13 +378,17 @@ function getParamCount(m) {
   if (mMatch) return parseFloat(mMatch[1]) / 1000;
   return null;
 }
-function paramPosToValue(pos) { return PARAM_VALUES[pos]; }
+function paramPosToValue(pos) {
+  if (pos <= 0) return 0;
+  if (pos >= PARAM_SLIDER_MAX) return Infinity;
+  const t = pos / PARAM_SLIDER_MAX;
+  return Math.exp(Math.log(0.001) + t * (Math.log(1000) - Math.log(0.001)));
+}
 function paramValueToLabel(val) {
   if (val === Infinity) return ">1T";
   if (val === 0) return "0";
-  if (val >= 1000) return `${Math.round(val / 100) / 10}T`;
-  if (val >= 5) return `${Math.round(val)}B`;
-  if (val >= 1) return `${Math.round(val * 10) / 10}B`;
+  if (val >= 1000) return `${Math.round(val / 1000)}T`;
+  if (val >= 1) return `${Math.round(val)}B`;
   return `${Math.round(val * 1000)}M`;
 }
 function isInParamRange(paramB) {
@@ -1130,15 +1154,22 @@ function buildParamSlider() {
 }
 
 function updateParamUI() {
-  document.getElementById("ps-from-label").textContent = paramValueToLabel(paramPosToValue(paramSliderFrom));
-  document.getElementById("ps-to-label").textContent = paramValueToLabel(paramPosToValue(paramSliderTo));
+  const fromVal = paramPosToValue(paramSliderFrom);
+  const toVal = paramPosToValue(paramSliderTo);
+  document.getElementById("ps-from-label").textContent = paramValueToLabel(fromVal);
+  document.getElementById("ps-to-label").textContent = paramValueToLabel(toVal);
 
-  const min = 0, range = 29;
-  const left = ((paramSliderFrom - min) / range) * 100;
-  const right = ((paramSliderTo - min) / range) * 100;
+  const range = PARAM_SLIDER_MAX;
+  const left = (paramSliderFrom / range) * 100;
+  const right = (paramSliderTo / range) * 100;
   const fill = document.getElementById("ps-fill");
   fill.style.left = left + "%";
   fill.style.width = (right - left) + "%";
+
+  const tipFrom = document.getElementById("ps-tooltip-from");
+  const tipTo = document.getElementById("ps-tooltip-to");
+  if (tipFrom) { tipFrom.style.left = left + "%"; tipFrom.textContent = paramValueToLabel(fromVal); }
+  if (tipTo) { tipTo.style.left = right + "%"; tipTo.textContent = paramValueToLabel(toVal); }
 }
 
 // ── Main Table Sort ──

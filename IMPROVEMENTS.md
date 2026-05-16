@@ -19,6 +19,7 @@ The following issues from this review have been addressed (see commit message fo
 | 13 | Truncated model IDs lack tooltips | Added `title` attribute to L2 and L4 model ID links |
 | 14 | "Get Results" button never changes label | Switches to "Refresh" after first successful fetch in `applyFilters` |
 | 15 | Inactive chip contrast | Changed `#484f58` to `#6e7681` for WCAG AA compliance |
+| 17 | Param slider non-linear stepping | Replaced 30-position stepped slider with logarithmic 200-position continuous scale; added tooltips and visual legend |
 | 18 | Empty catch blocks during deepening | Added `console.warn` with model ID and error details |
 
 ---
@@ -27,9 +28,6 @@ The following issues from this review have been addressed (see commit message fo
 
 ### 16. No collapse-all or expand-all for sections
 Each L1/L2/L3 row must be clicked individually to expand/collapse.
-
-### 17. Param slider non-linear mapping is visually misleading (line 262)
-30 positions, but 0–10 are step-1, 10–100 step-10, 100–1000 step-100. A user dragging the slider sees position linearly but values jump non-linearly. A logarithmic scale or shown numeric label next to the thumb would help.
 
 ### Code Quality & Maintainability
 
