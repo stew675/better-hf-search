@@ -1136,7 +1136,7 @@ function updateDateUI() {
 function buildParamLegend() {
   const input = document.getElementById("ps-from");
   const legend = document.getElementById("ps-legend");
-  const ticks = [0, 0.05, 0.1, 0.25, 0.5, 1, 10, 100, 1000];
+  const ticks = [0, 0.1, 0.25, 0.5, 1, 10, 100, 1000];
   legend.innerHTML = ticks.map(v => {
     const left = sliderCenterPct(input, valueToPos(v));
     return `<div class="ps-legend-tick" style="left:${left}%"><span class="ps-legend-label">${paramValueToLabel(v)}</span></div>`;
